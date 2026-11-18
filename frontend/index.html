@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Calculadora didática de Cálculo Diferencial e Integral: funções, limites, derivadas e integrais, com gráfico." />
+  <meta name="theme-color" content="#140810" />
+  <title>Doce Amor · Calculadora de CDI</title>
+  <link rel="icon" href="assets/marca/simbolo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topo">
+      <div class="marca">
+        <img class="marca-simbolo" src="assets/marca/simbolo.svg" alt="" width="40" height="40" />
+        <div><strong>Doce Amor</strong><span>Calculadora de CDI</span></div>
+      </div>
+      <nav class="abas" role="tablist" aria-label="Módulos da calculadora">
+        <span class="abas-indicador" aria-hidden="true"></span>
+        <button role="tab" id="aba-funcoes" aria-controls="painel" aria-selected="true" data-aba="funcoes"><span class="mat">f(x)</span>Funções<kbd>1</kbd></button>
+        <button role="tab" id="aba-limites" aria-controls="painel" aria-selected="false" tabindex="-1" data-aba="limites"><span class="mat">lim</span>Limites<kbd>2</kbd></button>
+        <button role="tab" id="aba-derivadas" aria-controls="painel" aria-selected="false" tabindex="-1" data-aba="derivadas"><span class="mat">d/dx</span>Derivadas<kbd>3</kbd></button>
+        <button role="tab" id="aba-integrais" aria-controls="painel" aria-selected="false" tabindex="-1" data-aba="integrais"><span class="mat">∫</span>Integrais<kbd>4</kbd></button>
+      </nav>
+      <button type="button" id="botao-animacoes" class="botao-anim" aria-pressed="true" title="Liga ou desliga as animações (cursores 3D, gráfico e visor)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5v15.2l4.1-3.9 2.7 6 2.6-1.2-2.7-5.9h5.7Z" /></svg>
+        <span>Animações</span><i aria-hidden="true"></i>
+      </button>
+    </header>
+
+    <main id="painel" class="painel" role="tabpanel" aria-labelledby="aba-funcoes" tabindex="-1">
+      <section class="controles peca" aria-label="Escolha e valores">
+        <h1 id="titulo-modulo">Funções</h1>
+        <p id="descricao-modulo" class="descricao"></p>
+        <fieldset class="opcoes">
+          <legend id="legenda-opcoes">Tipo</legend>
+          <div id="lista-opcoes" class="lista-opcoes"></div>
+        </fieldset>
+        <form id="form-valores" class="valores" novalidate>
+          <div id="campos" class="campos"></div>
+          <button type="submit" class="botao-calcular">Calcular</button>
+        </form>
+      </section>
+
+      <section class="visor peca" aria-live="polite" aria-atomic="true">
+        <p id="visor-expressao" class="visor-expressao mat"></p>
+        <p class="visor-resultado"><span id="visor-igual" class="igual">=</span> <output id="visor-valor" for="form-valores"></output></p>
+        <p class="visor-fala"><span id="visor-nota" class="visor-nota"></span></p>
+        <aside class="dica" aria-live="polite" aria-label="Dica do assunto">
+          <p class="dica-rotulo">Dica</p>
+          <p id="dica-texto" class="dica-texto"></p>
+          <button type="button" id="dica-proxima" class="dica-proxima">Outra dica ›</button>
+        </aside>
+      </section>
+
+      <figure class="grafico peca">
+        <canvas id="grafico" aria-label="Gráfico do cálculo atual no plano cartesiano"></canvas>
+        <figcaption id="legenda-grafico" class="legenda-grafico"></figcaption>
+      </figure>
+
+      <section class="detalhes peca" aria-labelledby="titulo-detalhes">
+        <h2 id="titulo-detalhes">Como foi calculado</h2>
+        <ol id="passos" class="passos"></ol>
+        <dl id="dados" class="dados"></dl>
+        <div id="tabela" class="tabela"></div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Doce Amor · Identidade visual</title>
+  <link rel="icon" href="../assets/marca/simbolo.svg" type="image/svg+xml" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --amora: #140810; --amora-2: #1f0d18; --amora-3: #28121f; --linha: #3a2030;
+      --ameixa: #4a1236; --ameixa-2: #66204f; --framboesa: #d6336c; --rosa: #ff5c93; --rosa-doce: #ff8fb6;
+      --chantili: #fff1f6; --tinta-2: #d4b3c4; --tinta-3: #a3859a; --lavanda: #c89bff;
+      --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+      --mat: "Cambria Math", Cambria, "STIX Two Math", Georgia, serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--amora); color: var(--chantili); font: 16px/1.55 var(--sans); }
+    main { max-width: 1040px; margin: 0 auto; padding: 48px 20px 80px; }
+    header.capa { display: flex; align-items: center; gap: 20px; padding: 36px; border-radius: 22px; background: linear-gradient(160deg, var(--ameixa-2), var(--ameixa) 60%, var(--amora-2)); }
+    header.capa img { width: 96px; height: 96px; }
+    h1 { margin: 0; font-size: clamp(1.9rem, 4vw, 2.6rem); letter-spacing: -0.02em; line-height: 1.1; }
+    .sub { margin: 6px 0 0; color: var(--tinta-2); }
+    h2 { margin: 56px 0 6px; font-size: 1.35rem; letter-spacing: -0.01em; }
+    h2 + p { margin: 0 0 20px; color: var(--tinta-2); max-width: 70ch; }
+    .grade { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+    .cartao { padding: 20px; border: 1px solid var(--linha); border-radius: 16px; background: var(--amora-2); }
+    .cartao.claro { background: #fff; color: #2a1020; border-color: #e7d6df; }
+    .cartao figure { margin: 0 0 12px; min-height: 96px; display: grid; place-items: center; }
+    .cartao figcaption, .cartao small { display: block; color: var(--tinta-3); font-size: 0.85rem; }
+    .cartao.claro small { color: #85677a; }
+    .cor { border-radius: 16px; overflow: hidden; border: 1px solid var(--linha); background: var(--amora-2); }
+    .cor div { height: 88px; }
+    .cor p { margin: 0; padding: 12px 14px; font-size: 0.9rem; }
+    .cor b { display: block; font-size: 1rem; }
+    .cor code { color: var(--tinta-2); }
+    .tamanhos { display: flex; align-items: end; gap: 18px; }
+    .tipo { padding: 24px; border: 1px solid var(--linha); border-radius: 16px; background: var(--amora-2); }
+    .tipo .marca { font-weight: 700; font-size: 2.4rem; letter-spacing: -0.03em; }
+    .tipo .mat { font-family: var(--mat); font-size: 1.6rem; color: var(--rosa-doce); }
+    ul.regras { padding-left: 1.2em; max-width: 72ch; }
+    ul.regras li { margin: 6px 0; }
+    .sim { color: #7fe0a8; } .nao { color: #ff8a8a; }
+    footer { margin-top: 56px; color: var(--tinta-3); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+<main>
+  <header class="capa">
+    <img src="../assets/marca/simbolo.svg" alt="Símbolo da Doce Amor" />
+    <div>
+      <h1>Doce Amor · Calculadora de CDI</h1>
+      <p class="sub">Guia de identidade visual: símbolo, cores, tipografia e como usar.</p>
+    </div>
+  </header>
+
+  <h2>O símbolo</h2>
+  <p>Um coração preenchido por barras: a <strong>soma de Riemann</strong>, que aproxima a área sob uma curva. Junta o “Doce Amor” do nome com o cálculo que a calculadora ensina. Legível de 16 px (ícone da aba) até cartazes.</p>
+  <div class="grade">
+    <div class="cartao"><figure><img src="../assets/marca/simbolo.svg" width="96" height="96" alt="" /></figure><b>Ícone</b><small>simbolo.svg · app, aba do navegador, avatar</small></div>
+    <div class="cartao claro"><figure><img src="../assets/marca/simbolo-livre.svg" width="104" alt="" /></figure><b>Símbolo livre, fundo claro</b><small>simbolo-livre.svg</small></div>
+    <div class="cartao"><figure><img src="../assets/marca/simbolo-livre-claro.svg" width="104" alt="" /></figure><b>Símbolo livre, fundo escuro</b><small>simbolo-livre-claro.svg</small></div>
+  </div>
+
+  <h2>Logo com o nome</h2>
+  <p>Use a versão horizontal quando houver espaço para o nome; ela é a assinatura principal.</p>
+  <div class="grade" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr))">
+    <div class="cartao"><figure><img src="../assets/marca/logo-horizontal-escuro.svg" width="300" alt="Doce Amor, Calculadora de CDI" /></figure><small>logo-horizontal-escuro.svg · fundos escuros (padrão)</small></div>
+    <div class="cartao claro"><figure><img src="../assets/marca/logo-horizontal.svg" width="300" alt="Doce Amor, Calculadora de CDI" /></figure><small>logo-horizontal.svg · fundos claros (slides, impresso)</small></div>
+  </div>
+
+  <h3 style="margin:28px 0 12px;font-size:1rem">Tamanhos</h3>
+  <div class="tamanhos">
+    <img src="../assets/marca/simbolo.svg" width="128" height="128" alt="" />
+    <img src="../assets/marca/simbolo.svg" width="64" height="64" alt="" />
+    <img src="../assets/marca/simbolo.svg" width="32" height="32" alt="" />
+    <img src="../assets/marca/simbolo.svg" width="16" height="16" alt="" />
+  </div>
+
+  <h2>Cores</h2>
+  <p>Tema escuro, com nomes de doce. A Amora é a mesa; a Ameixa destaca o visor; Framboesa e Rosa marcam ação e resultado; Chantili é o texto.</p>
+  <div class="grade" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr))">
+    <div class="cor"><div style="background:#140810"></div><p><b>Amora</b><code>#140810</code><br />fundo da página</p></div>
+    <div class="cor"><div style="background:#1f0d18"></div><p><b>Amora clara</b><code>#1F0D18</code><br />cartões e painéis</p></div>
+    <div class="cor"><div style="background:#4a1236"></div><p><b>Ameixa</b><code>#4A1236</code><br />visor, ícone</p></div>
+    <div class="cor"><div style="background:#d6336c"></div><p><b>Framboesa</b><code>#D6336C</code><br />botões, aba ativa</p></div>
+    <div class="cor"><div style="background:#ff5c93"></div><p><b>Rosa</b><code>#FF5C93</code><br />curvas, seleção, links</p></div>
+    <div class="cor"><div style="background:#ff8fb6"></div><p><b>Rosa-doce</b><code>#FF8FB6</code><br />destaques no visor</p></div>
+    <div class="cor"><div style="background:#fff1f6"></div><p><b>Chantili</b><code>#FFF1F6</code><br />texto principal</p></div>
+    <div class="cor"><div style="background:#c89bff"></div><p><b>Lavanda</b><code>#C89BFF</code><br />2ª cor do gráfico (tangente)</p></div>
+  </div>
+  <p style="margin-top:14px;color:var(--tinta-3);font-size:.9rem">Degradê do símbolo: <code>#FF9CC0 → #E0447E</code>. Texto secundário: <code>#D4B3C4</code>.</p>
+
+  <h2>Tipografia</h2>
+  <p>Fontes do sistema (funciona sem internet, no telão da sala). A notação matemática usa uma fonte própria de fórmulas.</p>
+  <div class="grade" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))">
+    <div class="tipo"><div class="marca">Doce Amor</div><small style="color:var(--tinta-3)">Nome: Segoe UI, negrito 700, espaçamento −0,03 em</small></div>
+    <div class="tipo"><div style="font-size:1.1rem">Escolha a regra e um ponto: a derivada é a inclinação da reta tangente.</div><small style="color:var(--tinta-3)">Interface: Segoe UI / system-ui, 400–700</small></div>
+    <div class="tipo"><div class="mat">∫₀⁷ f(x) dx · lim<sub>x→5</sub> · f′(x)</div><small style="color:var(--tinta-3)">Fórmulas: Cambria Math</small></div>
+  </div>
+
+  <h2>Como usar</h2>
+  <ul class="regras">
+    <li class="sim">✓ Deixe uma margem livre em volta do símbolo de pelo menos ¼ da largura dele.</li>
+    <li class="sim">✓ Em fundo escuro use as versões claras; em fundo claro, as versões com contorno Amora.</li>
+    <li class="sim">✓ Abaixo de 24 px use só o ícone (sem o nome).</li>
+    <li class="nao">✗ Não estique, não gire e não troque as cores do degradê.</li>
+    <li class="nao">✗ Não coloque o símbolo sobre fotos ou fundos com muito detalhe.</li>
+    <li class="nao">✗ Não use personagens ou artes de jogos junto da marca.</li>
+  </ul>
+
+  <footer>Arquivos em <code>assets/marca/</code>. Cores aplicadas na calculadora em <code>styles.css</code> (variáveis no <code>:root</code>).</footer>
+</main>
+</body>
+</html>
