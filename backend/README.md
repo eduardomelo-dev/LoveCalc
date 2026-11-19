@@ -1,10 +1,59 @@
-# LoveCalc — back-end (ainda não existe)
+# LoveCalc — back-end
 
-Esta pasta está reservada para o back-end. Hoje o front-end faz todas as contas sozinho, em
-[`frontend/js/math.js`](../frontend/js/math.js). O back-end vai assumir essa parte. Este documento é o
-**contrato** que o front-end espera: com ele, os dois lados podem ser feitos em paralelo.
+API em **Node.js + Express** (JavaScript com ES modules) que faz as contas da calculadora. Hoje estão prontos
+os módulos de **Funções** e **Limites**; Derivadas e Integrais serão feitos por outra pessoa. Até o front-end
+trocar para a API, ele continua calculando sozinho em [`frontend/js/math.js`](../frontend/js/math.js).
 
-A linguagem e o framework ficam a critério de quem desenvolver (por exemplo, Node + Express ou Python + FastAPI).
+Este documento é também o **contrato** que o front-end espera (seção [Regras gerais](#regras-gerais) em diante).
+
+## Como instalar e rodar
+
+Pré-requisito: Node.js 18 ou mais novo (`node --version`).
+
+```bash
+cd backend
+npm install     # instala o Express (única dependência)
+npm start       # liga em http://localhost:3000/api/saude
+npm test        # roda os testes (node:test + fetch do Node)
+```
+
+Outra porta: `PORT=8080 npm start` (no PowerShell: `$env:PORT=8080; npm start`).
+
+Teste rápido com curl:
+
+```bash
+curl http://localhost:3000/api/saude
+curl -X POST http://localhost:3000/api/funcoes/calcular -H "Content-Type: application/json" -d '{"tipo":"quadratic","x":10}'
+curl -X POST http://localhost:3000/api/limites/calcular -H "Content-Type: application/json" -d '{"caso":"removivel","a":5}'
+```
+
+### Organização
+
+| Arquivo | O que faz |
+|---|---|
+| `src/server.js` | Só liga a porta (`PORT`, padrão 3000). |
+| `src/app.js` | Monta o Express: CORS, leitura do JSON, rotas e erros. Exporta o `app` (os testes usam). |
+| `src/rotas/*.js` | Uma rota por arquivo: lê e valida a entrada e devolve o JSON. |
+| `src/calculos/*.js` | As contas e os textos, iguais aos de `frontend/js/math.js`. |
+| `src/calculos/numeros.js` | `arredondar` (10 casas; infinito vira `null`) e `formatNumber` (padrão brasileiro nos textos). |
+| `src/validacao.js` | `lerNumero`, `lerOpcao` e a classe `ErroApi` (400 por padrão; use 422 quando a conta não existe). |
+| `tests/` | `api.test.js` (rotas, erros, CORS) e `paridade.test.js` (compara com `frontend/js/math.js`). |
+
+Para acrescentar Derivadas ou Integrais: criar `src/calculos/derivadas.js` e `src/rotas/derivadas.js` no mesmo
+molde e registrar a rota em `src/app.js` com uma linha (`app.use("/api/derivadas", rotasDerivadas)`).
+
+### Situação das rotas
+
+| Rota | Situação |
+|---|---|
+| `GET /api/saude` | ✅ pronta |
+| `POST /api/funcoes/calcular` | ✅ pronta |
+| `POST /api/limites/calcular` | ✅ pronta |
+| `POST /api/derivadas/calcular` | ⏳ a fazer (outra pessoa) |
+| `POST /api/integrais/calcular` | ⏳ a fazer (outra pessoa) |
+
+As respostas de funções e limites trazem também o campo `formula` (o mesmo texto do front-end), além dos
+campos do contrato. Os números saem arredondados em 10 casas decimais.
 
 ## Regras gerais
 
