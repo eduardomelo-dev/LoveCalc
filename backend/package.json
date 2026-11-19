@@ -1,0 +1,16 @@
+{
+  "name": "lovecalc-backend",
+  "private": true,
+  "type": "module",
+  "description": "API da calculadora LoveCalc (Funções e Limites).",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^5.3.0"
+  }
+}
