@@ -4,6 +4,7 @@ import express from "express";
 import { ErroApi } from "./validacao.js";
 import rotasSaude from "./rotas/saude.js";
 import rotasFuncoes from "./rotas/funcoes.js";
+import rotasLimites from "./rotas/limites.js";
 
 // Endereço do front-end em desenvolvimento (python -m http.server 4173).
 export const ORIGEM_FRONT = "http://localhost:4173";
@@ -25,6 +26,7 @@ app.use(express.json());
 // Rotas (derivadas e integrais entram aqui, uma linha cada).
 app.use("/api/saude", rotasSaude);
 app.use("/api/funcoes", rotasFuncoes);
+app.use("/api/limites", rotasLimites);
 
 // Rota que não existe.
 app.use((req, res) => {
