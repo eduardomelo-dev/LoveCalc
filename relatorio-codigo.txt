@@ -1,0 +1,2084 @@
+﻿=== ESTRUTURA DE ARQUIVOS ===
+README.md
+backend\README.md
+backend\src\calculo\derivadas.js
+backend\src\calculo\integrais.js
+backend\src\rotas\app.js
+backend\src\rotas\derivadas.js
+backend\src\rotas\integrais.js
+backend\tests\derivadas-integrais.test.js
+frontend\index.html
+frontend\package.json
+frontend\PRODUCT.md
+frontend\README.md
+frontend\styles.css
+frontend\docs\identidade-visual.html
+frontend\js\app.js
+frontend\js\cursor-orchestra.js
+frontend\js\cursor-path.js
+frontend\js\dicas.js
+frontend\js\graph.js
+frontend\js\math.js
+frontend\tests\cursor-orchestra.test.js
+frontend\tests\graph.test.js
+frontend\tests\math.test.js
+
+=== README.md ===
+# LoveCalc
+
+Calculadora didática de **Cálculo Diferencial e Integral**, com tema "Doce Amor". Projeto do 1º período de
+Engenharia de Software.
+
+![Calculadora no tema escuro, aba Derivadas](frontend/docs/preview.png)
+
+## Estrutura
+
+| Pasta | O que é | Situação |
+|---|---|---|
+| [`frontend/`](frontend/) | A calculadora: HTML, CSS e JavaScript puros, com testes | ✅ pronta |
+| [`backend/`](backend/) | API que vai fazer as contas | ⏳ ainda não existe; o contrato da API está no README da pasta |
+
+Enquanto o back-end não existe, o front-end calcula tudo localmente (`frontend/js/math.js`) e funciona sozinho.
+
+## Rodar o front-end
+
+```bash
+cd frontend
+python -m http.server 4173   # depois abra http://localhost:4173
+npm test                     # 20 testes
+```
+
+## Módulos
+
+- **Funções**: constante, afim, quadrática, modular e exponencial, com domínio, imagem, tabela e gráfico.
+- **Limites**: removível (0/0), lateral que não existe e no infinito, com tabela de aproximação.
+- **Derivadas**: constante, potência, soma, produto, quociente e cadeia, com reta tangente e conferência numérica.
+- **Integrais**: cinco regras de primitiva e uma integral definida, com área no gráfico e conferência por Simpson.
+
+## Licença
+
+[MIT](LICENSE). O Three.js incluído em `frontend/vendor/` também é MIT (licença na mesma pasta).
+
+
+=== backend\README.md ===
+# LoveCalc — back-end (ainda não existe)
+
+Esta pasta está reservada para o back-end. Hoje o front-end faz todas as contas sozinho, em
+[`frontend/js/math.js`](../frontend/js/math.js). O back-end vai assumir essa parte. Este documento é o
+**contrato** que o front-end espera: com ele, os dois lados podem ser feitos em paralelo.
+
+A linguagem e o framework ficam a critério de quem desenvolver (por exemplo, Node + Express ou Python + FastAPI).
+
+## Regras gerais
+
+- Base: `/api`. Requisições e respostas em JSON (`Content-Type: application/json`), números em ponto decimal (`2.5`).
+- Entradas numéricas aceitas: de **−1000 a 1000** (o mesmo limite do front-end).
+- Erro de validação: **HTTP 400** com `{ "erro": "mensagem em português para mostrar ao usuário" }`.
+- Ponto onde a conta não existe (ex.: divisão por zero): **HTTP 422** com `{ "erro": "..." }`.
+- Liberar CORS para o endereço do front-end (em desenvolvimento, `http://localhost:4173`).
+- Valores infinitos: mandar `null` e explicar no campo de texto.
+
+## Rotas
+
+### `GET /api/saude`
+Para o front-end saber se a API está no ar. Resposta: `{ "ok": true }`.
+
+### `POST /api/funcoes/calcular`
+Entrada: `{ "tipo": "quadratic", "x": 10 }`, em que `tipo` é um de `constant`, `linear`, `quadratic`, `absolute` ou `exponential`.
+
+| tipo | função |
+|---|---|
+| `constant` | C(x) = 55 |
+| `linear` | A(x) = 40 + 3x |
+| `quadratic` | Q(x) = −0,04(x − 50)² + 100 |
+| `absolute` | M(x) = 100 − 2\|x − 50\| |
+| `exponential` | E(x) = 100(1 − e^(−0,12x)) |
+
+Resposta:
+```json
+{
+  "y": 36,
+  "tabela": [{ "x": 8, "y": 29.44 }, { "x": 9, "y": 32.76 }, { "x": 10, "y": 36 }, { "x": 11, "y": 39.16 }, { "x": 12, "y": 42.24 }],
+  "dominio": "ℝ (todos os reais)",
+  "imagem": "(−∞, 100]",
+  "explicacao": "Parábola com concavidade para baixo: o máximo é 100, no vértice x = 50."
+}
+```
+A `tabela` traz x − 2 até x + 2, de 1 em 1.
+
+### `POST /api/limites/calcular`
+Entrada: `{ "caso": "removivel", "a": 5 }`, em que `caso` é um de `removivel`, `lateral` ou `infinito`. O `a` só vale para `removivel`.
+
+| caso | limite |
+|---|---|
+| `removivel` | lim x→a (x² − a²)/(x − a) = 2a |
+| `lateral` | lim x→0 \|x\|/x (não existe: −1 pela esquerda, 1 pela direita) |
+| `infinito` | lim x→∞ (3x² + 1)/(x² + 2) = 3 |
+
+Resposta:
+```json
+{
+  "existe": true,
+  "valor": 10,
+  "esquerda": [{ "x": 4.9, "y": 9.9 }, { "x": 4.99, "y": 9.99 }, { "x": 4.999, "y": 9.999 }],
+  "direita": [{ "x": 5.1, "y": 10.1 }, { "x": 5.01, "y": 10.01 }, { "x": 5.001, "y": 10.001 }],
+  "passos": ["Em x = 5 a fração vira 0/0: indeterminada.", "Fatore: …", "Simplifique …"]
+}
+```
+Se o limite não existe: `"existe": false, "valor": null`. No caso `infinito`, `esquerda` traz x = 10, 100 e 1000, e `direita` vem vazia.
+
+### `POST /api/derivadas/calcular`
+Entrada: `{ "regra": "potencia", "x0": 1 }`, em que `regra` é uma de `constante`, `potencia`, `soma`, `produto`, `quociente` ou `cadeia`.
+
+| regra | f(x) | f′(x) |
+|---|---|---|
+| `constante` | 55 | 0 |
+| `potencia` | x³ | 3x² |
+| `soma` | 2x³ − 5x + 10 | 6x² − 5 |
+| `produto` | x²(x + 3) | 2x(x + 3) + x² |
+| `quociente` | (x² + 1)/(x + 2) | (x² + 4x − 1)/(x + 2)² |
+| `cadeia` | 100(1 − e^(−0,12x)) | 12e^(−0,12x) |
+
+Resposta:
+```json
+{ "y0": 1, "inclinacao": 3, "numerica": 3.00000001, "tangente": { "m": 3, "b": -2 } }
+```
+`numerica` é a conferência por diferença central com h = 0,0001. A tangente é `y = m·x + b`.
+No `quociente` com x0 = −2, responder **422** (o denominador zera).
+
+### `POST /api/integrais/calcular`
+Entrada: `{ "tipo": "definida", "a": 0, "b": 7 }`, em que `tipo` é um de `constante`, `potencia`, `soma`, `exponencial`, `trigonometrica` ou `definida`.
+
+| tipo | f(x) | primitiva F(x) |
+|---|---|---|
+| `constante` | 15 | 15x |
+| `potencia` | x³ | x⁴/4 |
+| `soma` | 3x² − 2x + 5 | x³ − x² + 5x |
+| `exponencial` | e^(0,12x) | e^(0,12x)/0,12 |
+| `trigonometrica` | cos(x) | sen(x) |
+| `definida` | 50 + 20·sen(πx/7) | 50x − (140/π)·cos(πx/7) |
+
+Resposta:
+```json
+{ "valor": 439.1268, "numerica": 439.1268, "Fa": -44.5634, "Fb": 394.5634 }
+```
+`valor` = F(b) − F(a); `numerica` é a conferência pela regra de Simpson com n = 200. Se a = b, o valor é 0.
+
+## Como o front-end vai trocar para a API
+
+1. Criar `frontend/js/api.js` com uma função por rota (`fetch` + tratamento de erro).
+2. Em `frontend/js/app.js`, trocar as chamadas de `calculateFunction`/`tabelaFuncao`, `LIMITES[caso].calcular`,
+   `calcularDerivada` e `calcularIntegral` pelas funções do `api.js`.
+3. Manter `math.js` como reserva: se `GET /api/saude` falhar, a calculadora continua funcionando offline.
+4. Os textos das fórmulas e as funções usadas para desenhar o gráfico continuam no front-end.
+
+Os testes de `frontend/tests/math.test.js` servem de referência para os testes do back-end: os mesmos
+números de entrada devem dar os mesmos resultados.
+
+
+=== backend\src\calculo\derivadas.js ===
+
+=== backend\src\calculo\integrais.js ===
+
+=== backend\src\rotas\app.js ===
+
+=== backend\src\rotas\derivadas.js ===
+// POST /api/derivadas/calcular  { "regra": "potencia", "x0": 1 }
+import { Router } from "express";
+
+import { DERIVADAS, calcularDerivada } from "../calculos/derivadas.js";
+import { lerCorpo, lerNumero, lerOpcao } from "../validacao.js";
+
+const rotas = Router();
+
+rotas.post("/calcular", (req, res) => {
+  const corpo = lerCorpo(req);
+  const regra = lerOpcao(corpo.regra, "regra", DERIVADAS);
+  const x0 = lerNumero(corpo.x0, "x0");
+  res.json(calcularDerivada(regra, x0));
+});
+
+export default rotas;
+
+
+=== backend\src\rotas\integrais.js ===
+
+=== backend\tests\derivadas-integrais.test.js ===
+
+=== frontend\index.html ===
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Calculadora didática de Cálculo Diferencial e Integral: funções, limites, derivadas e integrais, com gráfico." />
+  <meta name="theme-color" content="#140810" />
+  <title>Doce Amor · Calculadora de CDI</title>
+  <link rel="icon" href="assets/marca/simbolo.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topo">
+      <div class="marca">
+        <img class="marca-simbolo" src="assets/marca/simbolo.svg" alt="" width="40" height="40" />
+        <div><strong>Doce Amor</strong><span>Calculadora de CDI</span></div>
+      </div>
+      <nav class="abas" role="tablist" aria-label="Módulos da calculadora">
+        <span class="abas-indicador" aria-hidden="true"></span>
+        <button role="tab" id="aba-funcoes" aria-controls="painel" aria-selected="true" data-aba="funcoes"><span class="mat">f(x)</span>Funções<kbd>1</kbd></button>
+        <button role="tab" id="aba-limites" aria-controls="painel" aria-selected="false" tabindex="-1" data-aba="limites"><span class="mat">lim</span>Limites<kbd>2</kbd></button>
+        <button role="tab" id="aba-derivadas" aria-controls="painel" aria-selected="false" tabindex="-1" data-aba="derivadas"><span class="mat">d/dx</span>Derivadas<kbd>3</kbd></button>
+        <button role="tab" id="aba-integrais" aria-controls="painel" aria-selected="false" tabindex="-1" data-aba="integrais"><span class="mat">∫</span>Integrais<kbd>4</kbd></button>
+      </nav>
+      <button type="button" id="botao-animacoes" class="botao-anim" aria-pressed="true" title="Liga ou desliga as animações (cursores 3D, gráfico e visor)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3.5v15.2l4.1-3.9 2.7 6 2.6-1.2-2.7-5.9h5.7Z" /></svg>
+        <span>Animações</span><i aria-hidden="true"></i>
+      </button>
+    </header>
+
+    <main id="painel" class="painel" role="tabpanel" aria-labelledby="aba-funcoes" tabindex="-1">
+      <section class="controles peca" aria-label="Escolha e valores">
+        <h1 id="titulo-modulo">Funções</h1>
+        <p id="descricao-modulo" class="descricao"></p>
+        <fieldset class="opcoes">
+          <legend id="legenda-opcoes">Tipo</legend>
+          <div id="lista-opcoes" class="lista-opcoes"></div>
+        </fieldset>
+        <form id="form-valores" class="valores" novalidate>
+          <div id="campos" class="campos"></div>
+          <button type="submit" class="botao-calcular">Calcular</button>
+        </form>
+      </section>
+
+      <section class="visor peca" aria-live="polite" aria-atomic="true">
+        <p id="visor-expressao" class="visor-expressao mat"></p>
+        <p class="visor-resultado"><span id="visor-igual" class="igual">=</span> <output id="visor-valor" for="form-valores"></output></p>
+        <p class="visor-fala"><span id="visor-nota" class="visor-nota"></span></p>
+        <aside class="dica" aria-live="polite" aria-label="Dica do assunto">
+          <p class="dica-rotulo">Dica</p>
+          <p id="dica-texto" class="dica-texto"></p>
+          <button type="button" id="dica-proxima" class="dica-proxima">Outra dica ›</button>
+        </aside>
+      </section>
+
+      <figure class="grafico peca">
+        <canvas id="grafico" aria-label="Gráfico do cálculo atual no plano cartesiano"></canvas>
+        <figcaption id="legenda-grafico" class="legenda-grafico"></figcaption>
+      </figure>
+
+      <section class="detalhes peca" aria-labelledby="titulo-detalhes">
+        <h2 id="titulo-detalhes">Como foi calculado</h2>
+        <ol id="passos" class="passos"></ol>
+        <dl id="dados" class="dados"></dl>
+        <div id="tabela" class="tabela"></div>
+      </section>
+    </main>
+  </div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
+
+
+=== frontend\package.json ===
+{
+  "name": "lovecalc-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}
+
+
+=== frontend\PRODUCT.md ===
+# Product
+
+<!-- impeccable:product-schema 1 -->
+
+## Platform
+
+web
+
+## Users
+
+O grupo da disciplina de Cálculo Diferencial e Integral (Engenharia de Software, UniCatólica-RN) apresenta a calculadora em sala, projetada num telão a partir de um notebook, para a professora avaliar. Quem opera é um integrante do grupo; quem lê é a turma e a professora, à distância.
+
+## Product Purpose
+
+Calculadora didática de CDI com quatro módulos executáveis: Funções (5 tipos, com domínio, imagem, tabela e gráfico), Limites (removível e inexistente, com limites laterais), Derivadas (6 regras) e Integrais (5 regras indefinidas + 1 definida). Cada módulo mostra a fórmula, os valores usados, o resultado e uma explicação curta. O sucesso é a professora conseguir conferir cada cálculo na tela e o grupo demonstrar os quatro módulos sem rolar página nem se perder.
+
+## Positioning
+
+É uma calculadora, não um site: uma tela só, com abas que alternam os módulos. Os resultados são calculados de verdade a partir das entradas (não são textos fixos).
+
+## Constraints
+
+- Somente front-end (HTML, CSS e JavaScript puro, sem dependências); o back-end será feito por outra pessoa e poderá substituir `js/math.js` por chamadas `fetch`.
+- Deve caber numa tela de notebook projetada (sem rolagem da página no desktop), com texto legível de longe.
+- Entradas validadas (vazias, fora do intervalo, divisão por zero).
+- Entrega exige testes (`npm test`), documentação, histórico de commits e registro dos prompts de IA.
+- Tema Doce Amor só como identidade discreta (nome e cores); sem artes do jogo, sem tela de compatibilidade de nomes (decisão do grupo, 2026-11-17).
+- Animação de cursores 3D montando os blocos ao trocar de aba, só no desktop, sem bloquear cliques. Ligada por padrão mesmo com os efeitos de animação do Windows desligados (o notebook do dono tem esse ajuste); um botão "Animações" na barra liga e desliga todas as animações (cursores, gráfico, visor) e lembra a escolha.
+
+## Voice
+
+pt-BR, direto e didático: frases curtas que explicam o passo do cálculo.
+
+
+=== frontend\README.md ===
+# LoveCalc — front-end
+
+Calculadora didática de Cálculo Diferencial e Integral, numa tela só com quatro abas: **Funções**, **Limites**,
+**Derivadas** e **Integrais**. Feita em HTML, CSS e JavaScript puros, sem dependências e sem internet
+(o Three.js dos cursores animados fica copiado em `vendor/`).
+
+![Calculadora no tema escuro, aba Derivadas](docs/preview.png)
+
+## Como rodar
+
+Os módulos JavaScript precisam de um servidor local (abrir o `index.html` direto não funciona):
+
+```bash
+cd frontend
+python -m http.server 4173
+```
+
+Depois acesse `http://localhost:4173`.
+
+## Testes
+
+```bash
+cd frontend
+npm test
+```
+
+São 20 testes (`node --test`): contas de `math.js`, desenho do gráfico e trajetórias dos cursores.
+
+## O que tem na tela
+
+- **Controles** (esquerda): escolha do tipo, da regra ou do caso, e os valores de entrada, com validação.
+- **Visor**: expressão, resultado e explicação curta. No canto, uma **dica** do assunto da aba ("Outra dica ›" troca).
+- **Gráfico**: plano cartesiano próprio em canvas, com tangente, área, buraco e as cenas didáticas
+  (pontos se aproximando no limite, secante virando tangente, retângulos de Riemann). Dá para arrastar o ponto e as bordas.
+- **Como foi calculado** (direita): passos, valores e conferência numérica.
+- **Animações**: setas que montam a tela ao trocar de aba. O botão "Animações" liga e desliga tudo.
+- Atalhos: teclas 1–4 trocam de aba.
+
+## Estrutura
+
+```
+index.html             tela única (abas, controles, visor, gráfico, detalhes)
+styles.css             tema escuro "Doce Amor" (cores nomeadas no :root)
+js/app.js              interface: abas, validação, visor, gráfico, dicas
+js/math.js             contas (puras, sem DOM) — o back-end vai substituir por chamadas à API
+js/graph.js            desenho do plano cartesiano (canvas 2D)
+js/dicas.js            dicas de cada aba
+js/cursor-*.js         cursores animados (Three.js)
+assets/marca/          logo e símbolo em SVG
+docs/                  guia de identidade visual e imagem de prévia
+tests/                 testes com node --test
+```
+
+## Identidade visual
+
+O símbolo é um coração preenchido pelas barras de uma soma de Riemann. Logo, cores, tipografia e regras de uso
+estão em [`docs/identidade-visual.html`](docs/identidade-visual.html) (abra pelo servidor local).
+
+## Integração com o back-end
+
+Hoje as contas rodam em `js/math.js`. O contrato da API que o back-end vai implementar está em
+[`../backend/README.md`](../backend/README.md), junto com o passo a passo para trocar as chamadas locais por `fetch`.
+
+
+=== frontend\styles.css ===
+/* Doce Amor · Calculadora de CDI — uma tela só, abas que alternam os módulos.
+   Mundo: calculadora científica cor de amora, tema escuro. Visor ameixa em destaque sobre a mesa amora.
+   Fontes do sistema (funciona offline no telão); Cambria Math só para a notação matemática. */
+:root {
+  /* identidade "Doce Amor", tema escuro: Amora (fundo), Framboesa (ação), Rosa-doce (destaque), Chantili (texto) */
+  color-scheme: dark;
+  --fundo: #140810;
+  --superficie: #1f0d18;
+  --superficie-2: #28121f;
+  --tinta: #fbeef4;
+  --tinta-2: #d4b3c4;
+  --tinta-3: #a3859a;
+  --linha: #3a2030;
+  --acento: #ff5c93;
+  --acento-forte: #d6336c;
+  --acento-suave: #3d1428;
+  --visor: #4a1236;
+  --visor-2: #66204f;
+  --visor-tinta: #fff1f6;
+  --visor-tinta-2: #e8b4ca;
+  --visor-acento: #ff8fb6;
+  --erro: #ff6b6b;
+  --sombra: 0 1px 2px rgba(0, 0, 0, 0.45), 0 10px 28px -12px rgba(0, 0, 0, 0.65);
+  --raio: 14px;
+  --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --mat: "Cambria Math", Cambria, "STIX Two Math", "Latin Modern Math", Georgia, serif;
+  --rapido: 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  font: 400 17px/1.45 var(--sans);
+  color: var(--tinta);
+  background-color: var(--fundo);
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: var(--acento-suave); color: var(--tinta); }
+:focus-visible { outline: 3px solid var(--acento); outline-offset: 2px; border-radius: 8px; }
+.mat { font-family: var(--mat); }
+h1, h2 { margin: 0; text-wrap: balance; }
+
+/* ── estrutura: uma tela */
+.app { height: 100dvh; display: grid; grid-template-rows: auto 1fr; }
+.topo {
+  display: flex; align-items: center; gap: 28px;
+  padding: 12px 24px; background: var(--superficie); border-bottom: 1px solid var(--linha);
+}
+.marca { display: flex; align-items: center; gap: 12px; min-width: 230px; }
+.marca-simbolo { width: 40px; height: 40px; flex: none; }
+.marca strong { display: block; font-size: 1.05rem; font-weight: 700; letter-spacing: -0.01em; }
+.marca span { display: block; font-size: 0.86rem; color: var(--tinta-2); }
+
+.abas { display: flex; gap: 4px; padding: 4px; background: var(--superficie-2); border: 1px solid var(--linha); border-radius: 12px; }
+.abas button {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 9px 16px; border: 0; border-radius: 9px; background: transparent;
+  font: 600 1rem var(--sans); color: var(--tinta-2); cursor: pointer;
+  transition: background-color var(--rapido), color var(--rapido), box-shadow var(--rapido);
+}
+.abas button .mat { font-size: 1.05rem; font-weight: 400; color: var(--tinta-3); min-width: 2.2em; text-align: center; }
+.abas button kbd { font: 600 0.72rem var(--sans); color: var(--tinta-3); border: 1px solid var(--linha); border-radius: 5px; padding: 1px 6px; background: var(--superficie); }
+.abas button:hover { background: var(--acento-suave); color: var(--tinta); }
+.abas button[aria-selected="true"] { background: var(--visor); color: var(--visor-tinta); box-shadow: 0 6px 16px -8px rgba(59, 15, 42, 0.7); }
+.abas button[aria-selected="true"] .mat { color: #ffe0ec; }
+.abas button[aria-selected="true"] kbd { background: rgba(42, 6, 24, 0.35); border-color: transparent; color: #ffe0ec; }
+
+.painel {
+  min-height: 0; padding: 20px 24px 24px;
+  display: grid; gap: 20px;
+  grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(300px, 360px);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "controles visor detalhes" "controles grafico detalhes";
+}
+.painel:focus { outline: none; }
+.peca { background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio); box-shadow: var(--sombra); }
+.peca-pendente { opacity: 0; }
+
+/* ── controles */
+.controles { grid-area: controles; padding: 18px 18px 16px; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: auto; }
+.controles h1 { font-size: 1.45rem; font-weight: 700; letter-spacing: -0.02em; }
+.descricao { margin: -4px 0 2px; color: var(--tinta-2); font-size: 0.92rem; line-height: 1.35; }
+.opcoes { border: 0; margin: 0; padding: 0; }
+.opcoes legend { font-size: 0.86rem; font-weight: 600; color: var(--tinta-2); margin-bottom: 8px; }
+.lista-opcoes { display: grid; gap: 5px; }
+.opcao {
+  display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 10px;
+  width: 100%; padding: 7px 12px; text-align: left; cursor: pointer; line-height: 1.25;
+  border: 1px solid var(--linha); border-radius: 10px; background: var(--superficie);
+  font: 600 0.98rem var(--sans); color: var(--tinta);
+  transition: border-color var(--rapido), background-color var(--rapido);
+}
+.opcao small { grid-column: 1 / -1; font: 400 0.93rem var(--mat); color: var(--tinta-2); }
+.opcao:hover { border-color: var(--acento); }
+.opcao[aria-checked="true"] { background: var(--acento-suave); border-color: var(--acento); }
+.opcao[aria-checked="true"]::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--acento); grid-row: 1; grid-column: 2; }
+
+.valores { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 10px; margin-top: auto; padding-top: 4px; }
+.campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 10px; }
+.campo label { display: block; font-size: 0.86rem; font-weight: 600; color: var(--tinta-2); margin-bottom: 4px; }
+.campo input {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--linha); border-radius: 10px; background: var(--superficie-2);
+  font: 600 1.15rem var(--sans); font-variant-numeric: tabular-nums; color: var(--tinta); caret-color: var(--acento);
+  transition: border-color var(--rapido), box-shadow var(--rapido);
+}
+.campo input:hover { border-color: var(--tinta-3); }
+.campo input:focus { outline: none; border-color: var(--acento); box-shadow: 0 0 0 3px var(--acento-suave); background: var(--superficie); }
+.campo input[aria-invalid="true"] { border-color: var(--erro); box-shadow: 0 0 0 3px rgba(179, 38, 30, 0.12); }
+.campo .erro { margin: 4px 0 0; font-size: 0.82rem; line-height: 1.25; color: var(--erro); }
+.campo .erro:empty { display: none; }
+.campos:empty { align-self: center; }
+.campos:empty::before { content: "Este caso não precisa de valores: é só calcular."; color: var(--tinta-2); font-size: 0.92rem; }
+.botao-calcular {
+  margin-top: 23px; padding: 12px 18px; border: 0; border-radius: 11px; cursor: pointer; white-space: nowrap;
+  background: var(--acento-forte); color: #fff; font: 700 1.05rem var(--sans);
+  box-shadow: 0 8px 18px -10px rgba(214, 51, 108, 0.9);
+  transition: background-color var(--rapido), transform var(--rapido);
+}
+.botao-calcular:hover { background: var(--acento-forte); }
+.botao-calcular:active { transform: translateY(1px) scale(0.99); }
+
+/* ── visor (o "display" da calculadora) */
+.visor {
+  grid-area: visor; padding: 18px 26px 20px; background: var(--visor); border-color: var(--visor); color: var(--visor-tinta);
+  background-image: linear-gradient(180deg, var(--visor-2), var(--visor) 70%);
+  min-width: 0;
+}
+.visor-expressao { margin: 0; font-size: 1.35rem; color: var(--visor-tinta-2); overflow-wrap: anywhere; }
+.visor-resultado { margin: 4px 0 0; display: flex; align-items: baseline; gap: 14px; min-width: 0; }
+.visor-resultado .igual { font: 400 2.4rem var(--mat); color: var(--visor-acento); }
+.visor-resultado output { font: 700 clamp(2.2rem, 4vw, 3.5rem)/1.05 var(--sans); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.visor-resultado output.texto { font-size: clamp(1.8rem, 3vw, 2.6rem); }
+.visor-fala { margin: 10px 0 0; display: flex; align-items: baseline; gap: 10px; color: var(--visor-tinta-2); font-size: 1rem; max-width: 62ch; }
+/* dica do assunto no canto direito do visor (onde ficavam os personagens) */
+.visor { padding-right: 236px; min-height: 196px; }
+.dica { position: absolute; top: 16px; right: 16px; bottom: 16px; width: 204px; display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid rgba(255, 143, 182, 0.28); border-radius: 14px; background: rgba(255, 255, 255, 0.06); }
+.dica-rotulo { margin: 0; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--visor-acento); }
+.dica-texto { margin: 0; flex: 1; font-size: 0.95rem; line-height: 1.42; color: var(--visor-tinta); }
+.dica-proxima { align-self: flex-start; padding: 2px 0; border: 0; background: none; color: var(--visor-acento); font: 600 0.85rem var(--sans); cursor: pointer; }
+.dica-proxima:hover { text-decoration: underline; text-underline-offset: 3px; }
+.dica-proxima:focus-visible { outline: 2px solid #fff; outline-offset: 2px; border-radius: 4px; }
+@media (max-width: 900px) {
+  .visor { padding-right: 26px; min-height: 0; }
+  .dica { position: static; width: auto; margin-top: 14px; }
+}
+.visor-nota { min-width: 0; }
+/* etiqueta de nome, como na caixa de diálogo de visual novel */
+.visor.com-erro .visor-resultado output { color: var(--visor-acento); }
+
+/* ── gráfico */
+.grafico { grid-area: grafico; margin: 0; padding: 14px 16px 12px; display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 8px; min-height: 260px; }
+.grafico canvas { width: 100%; height: 100%; display: block; }
+.legenda-grafico { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 0.9rem; color: var(--tinta-2); }
+.legenda-grafico i { display: inline-block; width: 18px; height: 3px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+
+/* ── detalhes */
+.detalhes { grid-area: detalhes; padding: 20px; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; }
+.detalhes h2 { font-size: 1.1rem; font-weight: 700; }
+.passos { margin: 0; padding: 0; list-style: none; counter-reset: passo; display: grid; gap: 10px; }
+.passos li { counter-increment: passo; display: grid; grid-template-columns: 28px 1fr; gap: 10px; font-size: 0.98rem; }
+.passos li::before { content: counter(passo); width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 700 0.8rem var(--sans); background: var(--acento-suave); color: var(--acento-forte); }
+.dados { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; padding-top: 12px; border-top: 1px solid var(--linha); }
+.dados:empty, .tabela:empty { display: none; }
+.dados dt { color: var(--tinta-2); font-size: 0.9rem; }
+.dados dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; }
+.dados dd.mat { font-weight: 400; }
+.tabela table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 0.95rem; }
+.tabela caption { text-align: left; font-size: 0.86rem; font-weight: 600; color: var(--tinta-2); padding-bottom: 6px; }
+.tabela th, .tabela td { padding: 6px 8px; border-bottom: 1px solid var(--linha); text-align: right; }
+.tabela th { font: 400 0.95rem var(--mat); color: var(--tinta-2); }
+.tabela tr.atual td { background: var(--acento-suave); font-weight: 700; }
+
+/* ── cursores 3D: camada que nunca recebe cliques */
+.cursor-layer { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 50; opacity: 0; transition: opacity 160ms; }
+.cursor-layer.ativa { opacity: 1; }
+/* enquanto os cursores arrastam blocos de fora da tela: sem barra de rolagem nem corte */
+html.montando, html.montando body { overflow: hidden; }
+html.montando .painel { overflow: visible; }
+
+/* barra de rolagem interna no tom da tinta */
+.controles, .detalhes { scrollbar-width: thin; scrollbar-color: var(--linha) transparent; }
+
+/* ── telas menores: notebook pequeno empilha detalhes; celular vira coluna única */
+@media (max-width: 1240px) {
+  .painel { grid-template-columns: minmax(280px, 320px) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "controles visor" "controles grafico" "detalhes detalhes"; overflow: auto; }
+  .detalhes { overflow: visible; }
+  .grafico { min-height: 340px; }
+}
+@media (max-width: 900px) {
+  .app { height: auto; min-height: 100dvh; }
+  .topo { flex-wrap: wrap; gap: 12px; padding: 12px 16px; position: sticky; top: 0; z-index: 5; }
+  .marca { min-width: 0; }
+  .abas { width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .abas button { flex-direction: column; gap: 0; justify-content: center; padding: 6px 4px; font-size: 0.86rem; min-width: 0; }
+  .abas button .mat { font-size: 0.95rem; min-width: 0; }
+  .abas button kbd { display: none; }
+  .painel { padding: 16px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "visor" "controles" "grafico" "detalhes"; overflow: visible; }
+  .controles, .detalhes { overflow: visible; }
+  .valores { margin-top: 4px; }
+}
+html[data-animacoes="off"] *, html[data-animacoes="off"] *::before, html[data-animacoes="off"] *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+
+/* botão que liga/desliga os cursores 3D (fica à direita da barra) */
+.botao-anim {
+  margin-left: auto; display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 12px; border: 1px solid var(--linha); border-radius: 10px; background: var(--superficie);
+  font: 600 0.92rem var(--sans); color: var(--tinta-2); cursor: pointer;
+  transition: border-color var(--rapido), background-color var(--rapido), color var(--rapido);
+}
+.botao-anim svg { width: 18px; height: 18px; fill: var(--tinta-3); stroke: var(--superficie); stroke-width: 1.2; stroke-linejoin: round; }
+.botao-anim i { width: 30px; height: 18px; border-radius: 9px; background: var(--linha); position: relative; transition: background-color var(--rapido); }
+.botao-anim i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(42, 16, 32, 0.3); transition: transform var(--rapido); }
+.botao-anim:hover { border-color: var(--acento); color: var(--tinta); }
+.botao-anim[aria-pressed="true"] { color: var(--tinta); }
+.botao-anim[aria-pressed="true"] svg { fill: var(--acento); }
+.botao-anim[aria-pressed="true"] i { background: var(--acento); }
+.botao-anim[aria-pressed="true"] i::after { transform: translateX(12px); }
+@media (max-width: 900px) { .botao-anim { display: none; } }
+
+
+/* ───────── acabamento e movimento ───────── */
+
+/* atmosfera: luz suave cor de amora nos cantos (não é decoração de grade, é profundidade) */
+body {
+  background-image:
+    radial-gradient(900px 520px at 8% -10%, rgba(214, 51, 108, 0.14), transparent 70%),
+    radial-gradient(800px 600px at 105% 110%, rgba(140, 60, 170, 0.12), transparent 70%);
+}
+
+/* abas: a pílula escura desliza por baixo dos botões */
+.abas { position: relative; isolation: isolate; }
+.abas-indicador {
+  position: absolute; left: 0; top: 0; z-index: -1; border-radius: 9px;
+  background: linear-gradient(180deg, #e0447e, var(--acento-forte)); box-shadow: 0 8px 18px -8px rgba(214, 51, 108, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: transform 650ms cubic-bezier(0.22, 1, 0.36, 1), width 650ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.abas button[aria-selected="true"] { background: transparent; box-shadow: none; }
+.abas button:hover:not([aria-selected="true"]) { background: var(--acento-suave); }
+.abas button { position: relative; transition: color 260ms ease, background-color var(--rapido); }
+.abas button:active { transform: scale(0.97); }
+
+/* visor: vidro escuro com luz no topo e um brilho que respira */
+.visor {
+  position: relative; overflow: hidden; isolation: isolate;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 18px 40px -22px rgba(59, 15, 42, 0.9), var(--sombra);
+}
+.visor::before {
+  content: ""; position: absolute; inset: -40% -10% auto auto; width: 60%; height: 140%; z-index: -1;
+  background: radial-gradient(closest-side, rgba(255, 143, 182, 0.22), transparent);
+  animation: respirar 7s ease-in-out infinite alternate;
+}
+.visor::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 38%);
+}
+@keyframes respirar { from { transform: translate(0, 0) scale(1); opacity: 0.8; } to { transform: translate(-18%, 12%) scale(1.15); opacity: 1; } }
+.visor-resultado output { text-shadow: 0 0 28px rgba(255, 143, 182, 0.35); }
+.visor.com-erro .visor-resultado output { animation: tremer 360ms cubic-bezier(0.36, 0.07, 0.19, 0.97); }
+@keyframes tremer { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+
+/* opções: realce que desliza para dentro, toque com afundamento */
+.opcao { position: relative; overflow: hidden; isolation: isolate; transition: border-color var(--rapido), background-color var(--rapido), transform 120ms ease; }
+.opcao::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 100%; background: var(--acento-suave); z-index: -1;
+  transform: scaleX(0); transform-origin: left; transition: transform 380ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.opcao[aria-checked="true"] { background: var(--superficie); }
+.opcao[aria-checked="true"]::before { transform: scaleX(1); }
+.opcao small, .opcao::after { position: relative; }
+.opcao:active { transform: scale(0.985); }
+.opcao[aria-checked="true"]::after { animation: surgir-ponto 420ms cubic-bezier(0.34, 1.56, 0.64, 1); }
+@keyframes surgir-ponto { from { transform: scale(0); } to { transform: scale(1); } }
+
+/* botão calcular: brilho que passa ao apontar */
+.botao-calcular { position: relative; overflow: hidden; }
+.botao-calcular::after {
+  content: ""; position: absolute; inset: 0; transform: translateX(-120%);
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, 0.35) 50%, transparent 70%);
+  transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.botao-calcular:hover::after { transform: translateX(120%); }
+
+/* detalhes: passos, dados e linhas da tabela entram em cascata */
+.detalhes.entrando .passos li, .detalhes.entrando .dados dt, .detalhes.entrando .dados dd, .detalhes.entrando tbody tr {
+  animation: cascata 800ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 110ms + 200ms);
+}
+.detalhes.entrando .dados dt, .detalhes.entrando .dados dd { animation-delay: calc(var(--i, 0) * 90ms + 500ms); }
+.detalhes.entrando tbody tr { animation-delay: calc(var(--i, 0) * 70ms + 650ms); }
+@keyframes cascata { from { opacity: 0; transform: translateY(10px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+.passos li::before { transition: background-color var(--rapido); }
+.detalhes.entrando .passos li::before { animation: numero-pop 520ms cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: calc(var(--i, 0) * 70ms + 160ms); }
+@keyframes numero-pop { from { transform: scale(0.3); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* blocos: leve profundidade ao apontar */
+.peca { transition: box-shadow 260ms ease, transform 260ms ease; }
+.grafico:hover, .detalhes:hover, .controles:hover { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 16px 36px -14px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 92, 147, 0.18); }
+
+/* gráfico interativo: mira por padrão, mãozinha nas alças, "pegando" ao arrastar */
+.grafico canvas { cursor: crosshair; touch-action: none; }
+.grafico canvas.arrastando { cursor: grabbing !important; }
+.legenda-grafico::after { content: "Arraste o ponto ou as bordas no gráfico"; margin-left: auto; color: var(--tinta-3); font-size: 0.82rem; }
+
+
+
+=== frontend\docs\identidade-visual.html ===
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Doce Amor · Identidade visual</title>
+  <link rel="icon" href="../assets/marca/simbolo.svg" type="image/svg+xml" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --amora: #140810; --amora-2: #1f0d18; --amora-3: #28121f; --linha: #3a2030;
+      --ameixa: #4a1236; --ameixa-2: #66204f; --framboesa: #d6336c; --rosa: #ff5c93; --rosa-doce: #ff8fb6;
+      --chantili: #fff1f6; --tinta-2: #d4b3c4; --tinta-3: #a3859a; --lavanda: #c89bff;
+      --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+      --mat: "Cambria Math", Cambria, "STIX Two Math", Georgia, serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--amora); color: var(--chantili); font: 16px/1.55 var(--sans); }
+    main { max-width: 1040px; margin: 0 auto; padding: 48px 20px 80px; }
+    header.capa { display: flex; align-items: center; gap: 20px; padding: 36px; border-radius: 22px; background: linear-gradient(160deg, var(--ameixa-2), var(--ameixa) 60%, var(--amora-2)); }
+    header.capa img { width: 96px; height: 96px; }
+    h1 { margin: 0; font-size: clamp(1.9rem, 4vw, 2.6rem); letter-spacing: -0.02em; line-height: 1.1; }
+    .sub { margin: 6px 0 0; color: var(--tinta-2); }
+    h2 { margin: 56px 0 6px; font-size: 1.35rem; letter-spacing: -0.01em; }
+    h2 + p { margin: 0 0 20px; color: var(--tinta-2); max-width: 70ch; }
+    .grade { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+    .cartao { padding: 20px; border: 1px solid var(--linha); border-radius: 16px; background: var(--amora-2); }
+    .cartao.claro { background: #fff; color: #2a1020; border-color: #e7d6df; }
+    .cartao figure { margin: 0 0 12px; min-height: 96px; display: grid; place-items: center; }
+    .cartao figcaption, .cartao small { display: block; color: var(--tinta-3); font-size: 0.85rem; }
+    .cartao.claro small { color: #85677a; }
+    .cor { border-radius: 16px; overflow: hidden; border: 1px solid var(--linha); background: var(--amora-2); }
+    .cor div { height: 88px; }
+    .cor p { margin: 0; padding: 12px 14px; font-size: 0.9rem; }
+    .cor b { display: block; font-size: 1rem; }
+    .cor code { color: var(--tinta-2); }
+    .tamanhos { display: flex; align-items: end; gap: 18px; }
+    .tipo { padding: 24px; border: 1px solid var(--linha); border-radius: 16px; background: var(--amora-2); }
+    .tipo .marca { font-weight: 700; font-size: 2.4rem; letter-spacing: -0.03em; }
+    .tipo .mat { font-family: var(--mat); font-size: 1.6rem; color: var(--rosa-doce); }
+    ul.regras { padding-left: 1.2em; max-width: 72ch; }
+    ul.regras li { margin: 6px 0; }
+    .sim { color: #7fe0a8; } .nao { color: #ff8a8a; }
+    footer { margin-top: 56px; color: var(--tinta-3); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+<main>
+  <header class="capa">
+    <img src="../assets/marca/simbolo.svg" alt="Símbolo da Doce Amor" />
+    <div>
+      <h1>Doce Amor · Calculadora de CDI</h1>
+      <p class="sub">Guia de identidade visual: símbolo, cores, tipografia e como usar.</p>
+    </div>
+  </header>
+
+  <h2>O símbolo</h2>
+  <p>Um coração preenchido por barras: a <strong>soma de Riemann</strong>, que aproxima a área sob uma curva. Junta o “Doce Amor” do nome com o cálculo que a calculadora ensina. Legível de 16 px (ícone da aba) até cartazes.</p>
+  <div class="grade">
+    <div class="cartao"><figure><img src="../assets/marca/simbolo.svg" width="96" height="96" alt="" /></figure><b>Ícone</b><small>simbolo.svg · app, aba do navegador, avatar</small></div>
+    <div class="cartao claro"><figure><img src="../assets/marca/simbolo-livre.svg" width="104" alt="" /></figure><b>Símbolo livre, fundo claro</b><small>simbolo-livre.svg</small></div>
+    <div class="cartao"><figure><img src="../assets/marca/simbolo-livre-claro.svg" width="104" alt="" /></figure><b>Símbolo livre, fundo escuro</b><small>simbolo-livre-claro.svg</small></div>
+  </div>
+
+  <h2>Logo com o nome</h2>
+  <p>Use a versão horizontal quando houver espaço para o nome; ela é a assinatura principal.</p>
+  <div class="grade" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr))">
+    <div class="cartao"><figure><img src="../assets/marca/logo-horizontal-escuro.svg" width="300" alt="Doce Amor, Calculadora de CDI" /></figure><small>logo-horizontal-escuro.svg · fundos escuros (padrão)</small></div>
+    <div class="cartao claro"><figure><img src="../assets/marca/logo-horizontal.svg" width="300" alt="Doce Amor, Calculadora de CDI" /></figure><small>logo-horizontal.svg · fundos claros (slides, impresso)</small></div>
+  </div>
+
+  <h3 style="margin:28px 0 12px;font-size:1rem">Tamanhos</h3>
+  <div class="tamanhos">
+    <img src="../assets/marca/simbolo.svg" width="128" height="128" alt="" />
+    <img src="../assets/marca/simbolo.svg" width="64" height="64" alt="" />
+    <img src="../assets/marca/simbolo.svg" width="32" height="32" alt="" />
+    <img src="../assets/marca/simbolo.svg" width="16" height="16" alt="" />
+  </div>
+
+  <h2>Cores</h2>
+  <p>Tema escuro, com nomes de doce. A Amora é a mesa; a Ameixa destaca o visor; Framboesa e Rosa marcam ação e resultado; Chantili é o texto.</p>
+  <div class="grade" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr))">
+    <div class="cor"><div style="background:#140810"></div><p><b>Amora</b><code>#140810</code><br />fundo da página</p></div>
+    <div class="cor"><div style="background:#1f0d18"></div><p><b>Amora clara</b><code>#1F0D18</code><br />cartões e painéis</p></div>
+    <div class="cor"><div style="background:#4a1236"></div><p><b>Ameixa</b><code>#4A1236</code><br />visor, ícone</p></div>
+    <div class="cor"><div style="background:#d6336c"></div><p><b>Framboesa</b><code>#D6336C</code><br />botões, aba ativa</p></div>
+    <div class="cor"><div style="background:#ff5c93"></div><p><b>Rosa</b><code>#FF5C93</code><br />curvas, seleção, links</p></div>
+    <div class="cor"><div style="background:#ff8fb6"></div><p><b>Rosa-doce</b><code>#FF8FB6</code><br />destaques no visor</p></div>
+    <div class="cor"><div style="background:#fff1f6"></div><p><b>Chantili</b><code>#FFF1F6</code><br />texto principal</p></div>
+    <div class="cor"><div style="background:#c89bff"></div><p><b>Lavanda</b><code>#C89BFF</code><br />2ª cor do gráfico (tangente)</p></div>
+  </div>
+  <p style="margin-top:14px;color:var(--tinta-3);font-size:.9rem">Degradê do símbolo: <code>#FF9CC0 → #E0447E</code>. Texto secundário: <code>#D4B3C4</code>.</p>
+
+  <h2>Tipografia</h2>
+  <p>Fontes do sistema (funciona sem internet, no telão da sala). A notação matemática usa uma fonte própria de fórmulas.</p>
+  <div class="grade" style="grid-template-columns: repeat(auto-fill, minmax(300px, 1fr))">
+    <div class="tipo"><div class="marca">Doce Amor</div><small style="color:var(--tinta-3)">Nome: Segoe UI, negrito 700, espaçamento −0,03 em</small></div>
+    <div class="tipo"><div style="font-size:1.1rem">Escolha a regra e um ponto: a derivada é a inclinação da reta tangente.</div><small style="color:var(--tinta-3)">Interface: Segoe UI / system-ui, 400–700</small></div>
+    <div class="tipo"><div class="mat">∫₀⁷ f(x) dx · lim<sub>x→5</sub> · f′(x)</div><small style="color:var(--tinta-3)">Fórmulas: Cambria Math</small></div>
+  </div>
+
+  <h2>Como usar</h2>
+  <ul class="regras">
+    <li class="sim">✓ Deixe uma margem livre em volta do símbolo de pelo menos ¼ da largura dele.</li>
+    <li class="sim">✓ Em fundo escuro use as versões claras; em fundo claro, as versões com contorno Amora.</li>
+    <li class="sim">✓ Abaixo de 24 px use só o ícone (sem o nome).</li>
+    <li class="nao">✗ Não estique, não gire e não troque as cores do degradê.</li>
+    <li class="nao">✗ Não coloque o símbolo sobre fotos ou fundos com muito detalhe.</li>
+    <li class="nao">✗ Não use personagens ou artes de jogos junto da marca.</li>
+  </ul>
+
+  <footer>Arquivos em <code>assets/marca/</code>. Cores aplicadas na calculadora em <code>styles.css</code> (variáveis no <code>:root</code>).</footer>
+</main>
+</body>
+</html>
+
+
+=== frontend\js\app.js ===
+import {
+  FUNCOES, calculateFunction, tabelaFuncao, LIMITES, DERIVADAS, calcularDerivada, INTEGRAIS, calcularIntegral, lerNumero, formatNumber,
+} from "./math.js";
+import { drawGraph, autoRange } from "./graph.js";
+import { CursorOrchestra, animacoesLigadas, definirAnimacoes } from "./cursor-orchestra.js";
+import { DICAS } from "./dicas.js";
+
+const $ = (s) => document.querySelector(s);
+const fmt = formatNumber;
+
+// ───────── cada aba: opções, campos e a conta (tudo o que aparece na tela sai daqui)
+const MODULOS = {
+  funcoes: {
+    titulo: "Funções", descricao: "Escolha o tipo, informe x e veja a saída, a tabela e o gráfico.", legenda: "Tipo de função",
+    opcoes: Object.entries(FUNCOES).map(([id, f]) => ({ id, nome: f.nome, sub: f.formula })),
+    campos: () => [{ id: "x", rotulo: "Valor de x", padrao: "10", min: -100, max: 100 }],
+    calcular(id, v) {
+      const F = FUNCOES[id], x = v.x, y = calculateFunction(id, x);
+      const r = F.intervalo, range = { ...r, xMin: Math.min(r.xMin, x - 2), xMax: Math.max(r.xMax, x + 2) };
+      Object.assign(range, autoRange(F.f, range.xMin, range.xMax, [y, r.yMin, r.yMax]));
+      return {
+        expressao: `${F.letra}(${fmt(x)})`, valor: fmt(y, 4), numero: y, nota: F.explica(x),
+        passos: [`Fórmula: ${F.formula}.`, `Substitua x por ${fmt(x)}.`, `Resultado: ${F.letra}(${fmt(x)}) = ${fmt(y, 4)}.`],
+        dados: [["Domínio", F.dominio, true], ["Imagem", F.imagem, true]],
+        tabela: { titulo: "Entradas e saídas", cols: ["x", `${F.letra}(x)`], linhas: tabelaFuncao(id, x).map((p) => [fmt(p.x), fmt(p.y, 2)]), atual: 2 },
+        grafico: { f: F.f, range, points: [{ x, y }] }, arrastar: { campos: ["x"], alvo: "ponto" },
+        legenda: [["curva", F.formula], ["ponto", `(${fmt(x)}; ${fmt(y, 2)})`]],
+      };
+    },
+  },
+  limites: {
+    titulo: "Limites", descricao: "Veja para onde a função vai quando x se aproxima de um valor.", legenda: "Caso",
+    opcoes: Object.entries(LIMITES).map(([id, l]) => ({ id, nome: l.nome, sub: l.formula(5) })),
+    campos: (id) => (LIMITES[id].pedeA ? [{ id: "a", rotulo: "x tende a (a)", padrao: "5", min: -50, max: 50 }] : []),
+    calcular(id, v) {
+      const L = LIMITES[id], a = v.a ?? 5, r = L.calcular(a);
+      const lado = (pts, nome) => pts.map((p) => [fmt(p.x, 4), fmt(p.y, 4), nome]);
+      const linhas = [...lado(r.esquerda, id === "infinito" ? "x → ∞" : "esquerda"), ...lado(r.direita, "direita")];
+      let grafico, legenda;
+      if (id === "removivel") {
+        const f = (x) => (x * x - a * a) / (x - a);
+        grafico = { f, range: autoRange((x) => x + a, a - 6, a + 6), holes: [{ x: a, y: 2 * a }] };
+        legenda = [["curva", "f(x)"], ["buraco", `buraco em (${fmt(a)}; ${fmt(2 * a)})`]];
+      } else if (id === "lateral") {
+        grafico = { f: (x) => Math.abs(x) / x, range: { xMin: -4, xMax: 4, yMin: -2, yMax: 2 }, holes: [{ x: 0, y: -1 }, { x: 0, y: 1 }] };
+        legenda = [["curva", "|x| / x"], ["buraco", "saltos em x = 0"]];
+      } else {
+        const f = (x) => (3 * x * x + 1) / (x * x + 2);
+        grafico = { f, range: { xMin: 0, xMax: 20, yMin: 0, yMax: 3.6 }, tangent: () => 3 };
+        legenda = [["curva", "f(x)"], ["tangente", "assíntota y = 3"]];
+      }
+      return {
+        expressao: L.formula(a), valor: r.existe ? fmt(r.valor, 4) : "não existe", numero: r.existe ? r.valor : null, texto: !r.existe,
+        nota: r.existe ? "O limite existe: os valores da tabela se aproximam dele." : "Pela esquerda e pela direita a função vai para valores diferentes.",
+        passos: r.passos,
+        dados: id === "infinito" ? [["Comportamento", "f(x) → 3 quando x → ∞"]] : [["Limite pela esquerda", fmt(r.esquerda.at(-1).y, 3)], ["Limite pela direita", fmt(r.direita.at(-1).y, 3)]],
+        tabela: { titulo: "Aproximação numérica", cols: ["x", "f(x)", "lado"], linhas },
+        grafico, legenda,
+        cena: id === "infinito" ? { tipo: "infinito", f: grafico.f, de: 0.5, ate: 19.5 } : { tipo: "aproximar", f: grafico.f, alvo: id === "removivel" ? a : 0, de: id === "removivel" ? 4.5 : 3.6 },
+        arrastar: id === "removivel" ? { campos: ["a"], alvo: "buraco" } : null,
+      };
+    },
+  },
+  derivadas: {
+    titulo: "Derivadas", descricao: "Escolha a regra e um ponto: a derivada é a inclinação da reta tangente.", legenda: "Regra de derivação",
+    opcoes: Object.entries(DERIVADAS).map(([id, d]) => ({ id, nome: d.nome, sub: d.fTexto })),
+    campos: () => [{ id: "x", rotulo: "Ponto x₀", padrao: "1", min: -20, max: 20 }],
+    calcular(id, v) {
+      const D = DERIVADAS[id], x0 = v.x, r = calcularDerivada(id, x0);
+      if (!r.ok) return { erro: r.erro, expressao: `f′(${fmt(x0)})`, grafico: { f: D.f, range: { xMin: x0 - 6, xMax: x0 + 6, yMin: -30, yMax: 30 } }, legenda: [["curva", D.fTexto], ["buraco", `sem valor em x = ${fmt(x0)}`]] };
+      return {
+        expressao: `f′(${fmt(x0)})`, valor: fmt(r.inclinacao, 4), numero: r.inclinacao, nota: `Regra: ${D.regra}`,
+        passos: [`${D.fTexto}.`, `Aplique a regra: ${D.regra}.`, `${D.dfTexto}.`, `Em x₀ = ${fmt(x0)}: f′ = ${fmt(r.inclinacao, 4)}.`],
+        dados: [["f(x₀)", fmt(r.y0, 4)], ["f′(x₀)", fmt(r.inclinacao, 4)], ["Conferência numérica", fmt(r.numerica, 4)], ["Reta tangente", `y = ${fmt(r.y0, 2)} ${r.inclinacao < 0 ? "−" : "+"} ${fmt(Math.abs(r.inclinacao), 2)}(x ${x0 < 0 ? "+" : "−"} ${fmt(Math.abs(x0))})`, true]],
+        grafico: { f: D.f, range: autoRange(D.f, x0 - 4, x0 + 4, [r.y0]), tangent: r.tangente, points: [{ x: x0, y: r.y0 }] },
+        cena: { tipo: "secante", f: D.f, x0, inclinacao: r.inclinacao }, arrastar: { campos: ["x"], alvo: "ponto" },
+        legenda: [["curva", D.fTexto], ["tangente", "reta tangente"], ["ponto", `x₀ = ${fmt(x0)}`]],
+      };
+    },
+  },
+  integrais: {
+    titulo: "Integrais", descricao: "Escolha a regra e os limites a e b: a integral é a área acumulada.", legenda: "Regra de integração",
+    opcoes: Object.entries(INTEGRAIS).map(([id, i]) => ({ id, nome: i.nome, sub: i.integral })),
+    campos: (id) => [
+      { id: "a", rotulo: "De a", padrao: String(INTEGRAIS[id].a).replace(".", ","), min: -50, max: 50 },
+      { id: "b", rotulo: "Até b", padrao: String(INTEGRAIS[id].b).replace(".", ","), min: -50, max: 50 },
+    ],
+    calcular(id, v) {
+      const I = INTEGRAIS[id], { a, b } = v, r = calcularIntegral(id, a, b);
+      const lo = Math.min(a, b), hi = Math.max(a, b), m = Math.max(1, (hi - lo) * 0.2);
+      return {
+        expressao: `${I.integral.replace("∫", `∫[${fmt(a)}; ${fmt(b)}]`)}`, valor: fmt(r.valor, 4), numero: r.valor, nota: `Primitiva: F(x) = ${I.primitiva}`,
+        passos: [`Primitiva: F(x) = ${I.primitiva}.`, I.regra, `F(${fmt(b)}) − F(${fmt(a)}) = ${fmt(I.F(b), 4)} − ${I.F(a) < 0 ? `(${fmt(I.F(a), 4)})` : fmt(I.F(a), 4)} = ${fmt(r.valor, 4)}.`],
+        dados: [["F(b)", fmt(I.F(b), 4)], ["F(a)", fmt(I.F(a), 4)], ["Conferência (Simpson)", fmt(r.numerica, 4)]],
+        grafico: { f: I.f, range: autoRange(I.f, lo - m, hi + m, [0]), area: { a: lo, b: hi } },
+        cena: { tipo: "riemann", f: I.f, a: lo, b: hi, exato: r.valor }, arrastar: { campos: ["a", "b"], alvo: "bordas" },
+        legenda: [["curva", I.integral.replace("∫ ", "").replace(" dx", "")], ["area", `área de ${fmt(a)} a ${fmt(b)}`]],
+      };
+    },
+  },
+};
+
+// ───────── estado e tela
+// abre cada aba na opção que melhor mostra a ideia (a constante deixa a secante e os retângulos planos)
+const estado = { aba: "funcoes", opcao: { funcoes: "quadratic", derivadas: "potencia", integrais: "definida" }, valores: {} };
+const orquestra = new CursorOrchestra();
+const pecas = [...document.querySelectorAll(".peca")];
+let ultimo = null, ultimaAba = null;
+
+// ───────── dica do assunto no canto do visor (uma por vez; avança ao trocar de aba ou no botão)
+const dicaIdx = {};
+function mostrarDica() {
+  const lista = DICAS[estado.aba];
+  if (!lista?.length) return;
+  const i = dicaIdx[estado.aba] ?? 0;
+  dicaIdx[estado.aba] = (i + 1) % lista.length;
+  trocarTexto($("#dica-texto"), lista[i]);
+}
+$("#dica-proxima").addEventListener("click", mostrarDica);
+
+function cores() {
+  const css = getComputedStyle(document.documentElement), v = (n) => css.getPropertyValue(n).trim();
+  return { grade: "#34192a", rotulo: v("--tinta-2"), eixo: v("--tinta-2"), curva: v("--acento"), brilho: "rgba(255,92,147,.18)", tangente: "#c89bff", area: "rgba(255,92,147,.08)", areaForte: "rgba(255,92,147,.32)", retangulo: "rgba(255,92,147,.34)", retangulo2: "rgba(255,92,147,.22)", secante: "#ffb454", esquerda: "#c89bff", direita: "#ff5c93", mira: "rgba(255,241,246,.4)", ponto: "#fff1f6", fundo: v("--superficie") };
+}
+const COR_LEGENDA = { curva: "var(--acento)", tangente: "#c89bff", ponto: "#fff1f6", area: "rgba(255,92,147,.4)", buraco: "var(--acento)" };
+
+function opcaoAtual() {
+  const M = MODULOS[estado.aba];
+  return estado.opcao[estado.aba] ?? M.opcoes[0].id;
+}
+function valoresDe(chave, campos) {
+  estado.valores[chave] ??= Object.fromEntries(campos.map((c) => [c.id, c.padrao]));
+  return estado.valores[chave];
+}
+
+function montarAba() {
+  const M = MODULOS[estado.aba], op = opcaoAtual();
+  $("#titulo-modulo").textContent = M.titulo;
+  $("#descricao-modulo").textContent = M.descricao;
+  $("#legenda-opcoes").textContent = M.legenda;
+  mostrarDica();
+  const lista = $("#lista-opcoes");
+  lista.setAttribute("role", "radiogroup");
+  lista.innerHTML = M.opcoes.map((o) => `<button type="button" class="opcao" role="radio" aria-checked="${o.id === op}" tabindex="${o.id === op ? 0 : -1}" data-opcao="${o.id}">${o.nome}<small>${o.sub}</small></button>`).join("");
+  montarCampos();
+}
+
+function montarCampos() {
+  const M = MODULOS[estado.aba], op = opcaoAtual(), campos = M.campos(op), chave = `${estado.aba}:${op}`, vals = valoresDe(chave, campos);
+  $("#campos").innerHTML = campos.map((c) => `<div class="campo"><label for="campo-${c.id}">${c.rotulo}</label>
+    <input id="campo-${c.id}" name="${c.id}" inputmode="decimal" autocomplete="off" value="${vals[c.id]}" aria-describedby="erro-${c.id}" />
+    <p class="erro" id="erro-${c.id}" role="alert"></p></div>`).join("");
+  calcular();
+}
+
+function calcular({ piscar = false, arrastando = false } = {}) {
+  const M = MODULOS[estado.aba], op = opcaoAtual(), campos = M.campos(op), chave = `${estado.aba}:${op}`, vals = valoresDe(chave, campos);
+  const numeros = {}; let valido = true;
+  for (const c of campos) {
+    const input = $(`#campo-${c.id}`), r = lerNumero(input ? input.value : vals[c.id], { min: c.min, max: c.max, nome: c.rotulo.toLowerCase() });
+    if (input) { input.setAttribute("aria-invalid", String(!r.ok)); $(`#erro-${c.id}`).textContent = r.ok ? "" : r.erro; }
+    if (r.ok) { numeros[c.id] = r.valor; vals[c.id] = input ? input.value : vals[c.id]; } else valido = false;
+  }
+  const visor = $(".visor");
+  if (!valido) {
+    visor.classList.add("com-erro");
+    pararContagem(); $("#visor-valor").textContent = "—"; $("#visor-valor").classList.remove("texto");
+    $("#visor-nota").textContent = "Corrija o valor destacado para calcular.";
+    $("#passos").innerHTML = "<li>Digite um número válido no campo destacado.</li>";
+    $("#dados").innerHTML = ""; $("#tabela").innerHTML = "";
+    return;
+  }
+  const R = M.calcular(op, numeros);
+  const anterior = ultimo, mesmaAba = ultimaAba === estado.aba;
+  // arrastando, a escala fica parada (senão a janela segue o ponto e ele foge do mouse)
+  if (arrastando && anterior?.grafico && R.grafico) R.grafico = { ...R.grafico, range: anterior.grafico.range };
+  ultimo = R; ultimaAba = estado.aba;
+  visor.classList.toggle("com-erro", Boolean(R.erro));
+  trocarTexto($("#visor-expressao"), R.expressao);
+  mostrarValor(R, anterior, arrastando);
+  trocarTexto($("#visor-nota"), R.erro ?? R.nota);
+  // passos e tabela entram em cascata quando o assunto muda (aba, opção ou "Calcular")
+  const novoAssunto = !arrastando && (!mesmaAba || anterior?.nota !== R.nota || piscar);
+  $("#passos").innerHTML = (R.passos ?? [R.erro]).map((p, i) => `<li style="--i:${i}">${p}</li>`).join("");
+  $("#dados").innerHTML = (R.dados ?? []).map(([k, val, mat], i) => `<dt style="--i:${i}">${k}</dt><dd style="--i:${i}" class="${mat ? "mat" : ""}">${val}</dd>`).join("");
+  $("#tabela").innerHTML = R.tabela ? `<table><caption>${R.tabela.titulo}</caption><thead><tr>${R.tabela.cols.map((c) => `<th scope="col">${c}</th>`).join("")}</tr></thead>
+    <tbody>${R.tabela.linhas.map((l, i) => `<tr style="--i:${i}" class="${i === R.tabela.atual ? "atual" : ""}">${l.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")}</tbody></table>` : "";
+  const det = $(".detalhes");
+  det.classList.remove("entrando");
+  if (novoAssunto && animacoesLigadas()) { void det.offsetWidth; det.classList.add("entrando"); }
+  $("#legenda-grafico").innerHTML = (R.legenda ?? []).map(([k, t]) => `<span><i style="background:${COR_LEGENDA[k]}"></i>${t}</span>`).join("");
+  animarGrafico(anterior, !mesmaAba ? "revelar" : piscar ? "cena" : arrastando ? "arrastar" : "transformar");
+  if (piscar && animacoesLigadas()) {
+    visor.animate([{ boxShadow: "0 0 0 0 rgba(255,143,182,.6)" }, { boxShadow: "0 0 0 16px rgba(255,143,182,0)" }], { duration: 700, easing: "cubic-bezier(.16,1,.3,1)" });
+  }
+}
+
+// ───────── visor: o número "roda" até o novo resultado (como um marcador)
+let contagem = 0;
+function pararContagem() { cancelAnimationFrame(contagem); }
+function mostrarValor(R, anterior, arrastando = false) {
+  const out = $("#visor-valor");
+  pararContagem();
+  out.classList.toggle("texto", Boolean(R.erro || R.texto));
+  const final = R.erro ? "indefinido" : R.valor;
+  const de = anterior && Number.isFinite(anterior.numero) ? anterior.numero : 0;
+  if (arrastando || !animacoesLigadas() || !Number.isFinite(R.numero) || R.erro || de === R.numero) {
+    if (Number.isFinite(R.numero) && !R.erro) out.textContent = final; else trocarTexto(out, final);
+    return;
+  }
+  const casas = Math.abs(R.numero) < 10 ? 4 : 2, t0 = performance.now(), dur = 1100;
+  const passo = (agora) => {
+    const k = Math.min(1, (agora - t0) / dur), e = 1 - (1 - k) ** 3;
+    out.textContent = k < 1 ? fmt(de + (R.numero - de) * e, casas) : final;
+    if (k < 1) contagem = requestAnimationFrame(passo);
+  };
+  contagem = requestAnimationFrame(passo);
+}
+/** Troca um texto com um deslize curto (entra de baixo, desfocado → nítido). */
+function trocarTexto(el, texto) {
+  if (el.textContent === texto) return;
+  el.textContent = texto;
+  if (animacoesLigadas()) el.animate([{ opacity: 0, transform: "translateY(8px)", filter: "blur(3px)" }, { opacity: 1, transform: "none", filter: "blur(0)" }], { duration: 560, easing: "cubic-bezier(.22,1,.36,1)" });
+}
+
+// ───────── gráfico animado
+// "revelar":    a curva se escreve, depois vem a cena didática do módulo e o ponto pulsa.
+// "transformar": a curva antiga escorrega até a nova e a escala dos eixos acompanha.
+// "arrastar":   igual a transformar, mas curtinho (segue o mouse).
+// "cena":       só repete a cena didática (botão Calcular).
+// Cenas: limites → pontos correm até o buraco; derivadas → secante vira tangente (h → 0);
+//        integrais → retângulos de Riemann (2 → 64) viram a área exata.
+let quadroGrafico = 0, graficoAtual = null, mira = null;
+const lerp = (a, b, k) => a + (b - a) * k;
+const misturarRange = (a, b, k) => ({ xMin: lerp(a.xMin, b.xMin, k), xMax: lerp(a.xMax, b.xMax, k), yMin: lerp(a.yMin, b.yMin, k), yMax: lerp(a.yMax, b.yMax, k) });
+const backOut = (x) => { const c = 1.7, t = Math.min(1, x) - 1; return 1 + (c + 1) * t ** 3 + c * t ** 2; };
+const suave = (x) => { x = Math.min(1, Math.max(0, x)); return x * x * (3 - 2 * x); };
+const CENA = 3400;
+
+/** Parâmetros de desenho e texto do visor para a cena no progresso c (0..1). */
+function quadroCena(cena, c) {
+  if (!cena) return { g: {} };
+  if (cena.tipo === "aproximar") {
+    const e = 1 - (1 - suave(c)) ** 2, d = cena.de * (1 - e) + 0.004;
+    const xl = cena.alvo - d, xr = cena.alvo + d;
+    return { g: { aproximar: [{ x: xl, y: cena.f(xl), lado: "esquerda" }, { x: xr, y: cena.f(xr), lado: "direita" }] }, nota: `x → ${fmt(cena.alvo)}: pela esquerda ${fmt(cena.f(xl), 3)}, pela direita ${fmt(cena.f(xr), 3)}` };
+  }
+  if (cena.tipo === "infinito") {
+    const x = lerp(cena.de, cena.ate, suave(c));
+    return { g: { aproximar: [{ x, y: cena.f(x), lado: "direita" }] }, nota: `x = ${fmt(x, 1)}: f(x) = ${fmt(cena.f(x), 3)} → 3` };
+  }
+  if (cena.tipo === "secante") {
+    const e = suave(c / 0.85), h = 2.6 * (1 - e) ** 1.6 + 0.002, fim = Math.max(0, (c - 0.85) / 0.15);
+    const m = (cena.f(cena.x0 + h) - cena.f(cena.x0)) / h;
+    return { g: { secante: { x0: cena.x0, x1: cena.x0 + h, alfa: 1 - fim }, extras: fim }, nota: `inclinação da secante (h = ${fmt(h, 3)}) = ${fmt(m, 4)} → f′(x₀) = ${fmt(cena.inclinacao, 4)}` };
+  }
+  if (cena.tipo === "riemann") {
+    const NS = [2, 4, 8, 16, 32, 64], k = Math.min(NS.length - 1, Math.floor((c / 0.86) * NS.length)), n = NS[k];
+    const dx = (cena.b - cena.a) / n; let soma = 0;
+    for (let i = 0; i < n; i += 1) { const y = cena.f(cena.a + (i + 0.5) * dx); if (Number.isFinite(y)) soma += y * dx; }
+    const fim = Math.max(0, (c - 0.86) / 0.14);
+    return { g: { riemann: { a: cena.a, b: cena.b, n, alfa: 1 - fim }, extras: fim }, nota: `Soma com ${n} retângulos ≈ ${fmt(soma, 4)} (exato: ${fmt(cena.exato, 4)})` };
+  }
+  return { g: {} };
+}
+
+function animarGrafico(anterior, modo) {
+  cancelAnimationFrame(quadroGrafico);
+  const R = ultimo, novo = R?.grafico, nota = $("#visor-nota");
+  const velho = modo === "transformar" || modo === "arrastar" || modo === "cena" ? (graficoAtual ?? anterior?.grafico) : null;
+  if (!novo) { graficoAtual = null; const c = $("#grafico"); c.getContext("2d").clearRect(0, 0, c.width, c.height); return; }
+  if (!animacoesLigadas()) { graficoAtual = novo; desenhar(); return; }
+  const comCena = (modo === "revelar" || modo === "cena") && R.cena;
+  const durBase = modo === "revelar" ? 1500 : modo === "arrastar" ? 130 : 900;
+  const durCena = comCena ? CENA : 0, total = durBase + durCena + 750;
+  const t0 = performance.now();
+  const quadro = (agora) => {
+    const t = agora - t0, k = durBase ? Math.min(1, t / durBase) : 1, e = 1 - (1 - k) ** 3;
+    let g;
+    if (velho) {
+      const fa = velho.f, fb = novo.f;
+      g = {
+        ...novo,
+        range: misturarRange(velho.range, novo.range, e),
+        f: (x) => { const a = fa(x), b = fb(x); return Number.isFinite(a) && Number.isFinite(b) ? lerp(a, b, e) : (e < 0.5 ? a : b); },
+        tangent: novo.tangent && velho.tangent ? (x) => lerp(velho.tangent(x), novo.tangent(x), e) : novo.tangent,
+        area: novo.area && velho.area ? { a: lerp(velho.area.a, novo.area.a, e), b: lerp(velho.area.b, novo.area.b, e) } : novo.area,
+        points: (novo.points ?? []).map((p, i) => { const q = velho.points?.[i]; return q ? { x: lerp(q.x, p.x, e), y: lerp(q.y, p.y, e) } : p; }),
+        holes: (novo.holes ?? []).map((p, i) => { const q = velho.holes?.[i]; return q ? { x: lerp(q.x, p.x, e), y: lerp(q.y, p.y, e) } : p; }),
+        extras: (novo.tangent && !velho.tangent) || (novo.area && !velho.area) ? e : 1,
+      };
+    } else if (modo === "revelar") {
+      g = { ...novo, revelar: e, extras: comCena ? 0 : Math.max(0, (k - 0.35) / 0.65), ponto: k < 0.62 ? 0 : backOut((k - 0.62) / 0.38) };
+    } else g = { ...novo };
+    // cena didática depois que a curva já está desenhada
+    if (comCena && t >= durBase) {
+      const c = Math.min(1, (t - durBase) / durCena), q = quadroCena(R.cena, c);
+      Object.assign(g, q.g);
+      if (q.nota && R === ultimo) nota.textContent = c < 1 ? q.nota : R.nota;
+    }
+    if (t > durBase + durCena) g.pulso = Math.min(1, (t - durBase - durCena) / 750);
+    graficoAtual = { ...novo };
+    desenharQuadro(g);
+    if (t < total) quadroGrafico = requestAnimationFrame(quadro);
+    else { quadroGrafico = 0; if (R === ultimo) nota.textContent = R.erro ?? R.nota; }
+  };
+  graficoAtual = null;
+  quadroGrafico = requestAnimationFrame(quadro);
+}
+
+function desenharQuadro(g) {
+  drawGraph($("#grafico"), { ...g, mira, alcas: Boolean(ultimo?.arrastar), cores: cores(), fonte: getComputedStyle(document.body).fontFamily });
+}
+function desenhar() {
+  const canvas = $("#grafico");
+  if (!ultimo?.grafico) { canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height); return; }
+  desenharQuadro({ ...ultimo.grafico });
+}
+
+// ───────── abas: a pílula escura desliza até a aba escolhida
+function moverIndicador(instantaneo = false) {
+  const nav = $(".abas"), ind = $(".abas-indicador"), sel = nav.querySelector('[aria-selected="true"]');
+  if (!ind || !sel) return;
+  if (instantaneo) ind.style.transition = "none";
+  ind.style.width = `${sel.offsetWidth}px`;
+  ind.style.height = `${sel.offsetHeight}px`;
+  ind.style.transform = `translate(${sel.offsetLeft}px, ${sel.offsetTop}px)`;
+  if (instantaneo) { void ind.offsetWidth; ind.style.transition = ""; }
+}
+
+function trocarAba(aba, { foco = false } = {}) {
+  if (aba === estado.aba && !foco) return;
+  estado.aba = aba;
+  document.querySelectorAll("[role=tab]").forEach((t) => {
+    const sel = t.dataset.aba === aba;
+    t.setAttribute("aria-selected", String(sel)); t.tabIndex = sel ? 0 : -1;
+    if (sel && foco) t.focus();
+  });
+  moverIndicador();
+  $("#painel").setAttribute("aria-labelledby", `aba-${aba}`);
+  montarAba();
+  orquestra.play(pecas);
+}
+
+// ───────── eventos
+document.querySelectorAll("[role=tab]").forEach((t) => t.addEventListener("click", () => trocarAba(t.dataset.aba)));
+$(".abas").addEventListener("keydown", (e) => {
+  const abas = [...document.querySelectorAll("[role=tab]")], i = abas.findIndex((t) => t.dataset.aba === estado.aba);
+  const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+  if (d) { e.preventDefault(); trocarAba(abas[(i + d + abas.length) % abas.length].dataset.aba, { foco: true }); }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.target.closest("input") || e.altKey || e.ctrlKey || e.metaKey) return;
+  const n = ["1", "2", "3", "4"].indexOf(e.key);
+  if (n >= 0) trocarAba(Object.keys(MODULOS)[n], { foco: true });
+});
+$("#lista-opcoes").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-opcao]"); if (!b) return;
+  estado.opcao[estado.aba] = b.dataset.opcao; montarAba();
+  $(`[data-opcao="${b.dataset.opcao}"]`).focus();
+});
+$("#lista-opcoes").addEventListener("keydown", (e) => {
+  const d = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key]; if (!d) return;
+  e.preventDefault();
+  const ops = MODULOS[estado.aba].opcoes, i = ops.findIndex((o) => o.id === opcaoAtual()), nova = ops[(i + d + ops.length) % ops.length].id;
+  estado.opcao[estado.aba] = nova; montarAba(); $(`[data-opcao="${nova}"]`).focus();
+});
+$("#form-valores").addEventListener("submit", (e) => { e.preventDefault(); calcular({ piscar: true }); });
+$("#campos").addEventListener("input", () => calcular());
+let pendente = 0;
+addEventListener("resize", () => { cancelAnimationFrame(pendente); pendente = requestAnimationFrame(desenhar); });
+
+// ───────── gráfico interativo: mira com (x; f(x)) sob o mouse e arrastar o ponto, o buraco ou as bordas a e b
+const tela = $("#grafico");
+let arrasto = null;
+const xDoMouse = (e) => { const m = tela.__mapa, r = tela.getBoundingClientRect(); return m ? m.xDe(e.clientX - r.left) : null; };
+const pxDe = (x) => tela.__mapa?.X(x);
+function alvoPerto(e) {
+  const A = ultimo?.arrastar, G = ultimo?.grafico;
+  if (!A || !G || !tela.__mapa) return null;
+  const r = tela.getBoundingClientRect(), mx = e.clientX - r.left;
+  if (A.alvo === "bordas") {
+    const da = Math.abs(pxDe(G.area.a) - mx), db = Math.abs(pxDe(G.area.b) - mx);
+    const campo = da <= db ? "a" : "b";
+    // a ordem dos campos pode estar invertida (a > b): arrasta o campo cujo valor está nessa borda
+    const valA = Number($("#campo-a")?.value.replace(",", ".")), borda = campo === "a" ? G.area.a : G.area.b;
+    return { campo: Math.abs(valA - borda) < 1e-9 ? "a" : "b", dist: Math.min(da, db) };
+  }
+  const xAlvo = A.alvo === "buraco" ? G.holes[0].x : G.points[0].x;
+  return { campo: A.campos[0], dist: Math.abs(pxDe(xAlvo) - mx) };
+}
+function aplicarArrasto(e) {
+  const x = xDoMouse(e); if (x == null) return;
+  const M = MODULOS[estado.aba], campo = M.campos(opcaoAtual()).find((c) => c.id === arrasto.campo);
+  const G = ultimo.grafico, passo = (G.range.xMax - G.range.xMin) > 30 ? 0.5 : 0.05;
+  const xr = Math.max(G.range.xMin, Math.min(G.range.xMax, x));
+  const v = Math.max(campo.min, Math.min(campo.max, Math.round(xr / passo) * passo));
+  const input = $(`#campo-${campo.id}`);
+  const texto = fmt(v, 2).replace("−", "-").replace(/\./g, "");
+  if (input.value === texto) return;
+  input.value = texto;
+  calcular({ arrastando: true });
+}
+tela.addEventListener("pointerdown", (e) => {
+  const alvo = alvoPerto(e);
+  if (!alvo || alvo.dist > 36) return;
+  arrasto = alvo; tela.setPointerCapture(e.pointerId); tela.classList.add("arrastando");
+  aplicarArrasto(e);
+});
+tela.addEventListener("pointermove", (e) => {
+  if (arrasto) { aplicarArrasto(e); return; }
+  const alvo = alvoPerto(e);
+  tela.style.cursor = alvo && alvo.dist <= 36 ? "grab" : "crosshair";
+  mira = { x: xDoMouse(e) };
+  if (!quadroGrafico) desenhar();
+});
+const soltar = () => {
+  if (!arrasto) return;
+  arrasto = null; tela.classList.remove("arrastando");
+  // ao soltar, os passos e a tabela entram de novo em cascata e o ponto pulsa
+  ultimaAba = estado.aba; calcular({ piscar: true });
+};
+tela.addEventListener("pointerup", soltar);
+tela.addEventListener("pointercancel", soltar);
+tela.addEventListener("pointerleave", () => { if (arrasto) return; mira = null; if (!quadroGrafico) desenhar(); });
+
+const botaoAnim = $("#botao-animacoes");
+function aplicarAnimacoes(ligadas) {
+  document.documentElement.dataset.animacoes = ligadas ? "on" : "off";
+  botaoAnim.setAttribute("aria-pressed", String(ligadas));
+}
+aplicarAnimacoes(animacoesLigadas());
+botaoAnim.addEventListener("click", () => {
+  const ligar = botaoAnim.getAttribute("aria-pressed") !== "true";
+  definirAnimacoes(ligar); aplicarAnimacoes(ligar);
+  if (ligar) { ultimaAba = null; calcular(); requestAnimationFrame(() => orquestra.play(pecas)); } else orquestra.terminar();
+});
+
+montarAba();
+requestAnimationFrame(() => { moverIndicador(true); orquestra.play(pecas); });
+addEventListener("resize", () => moverIndicador(true));
+
+
+=== frontend\js\cursor-orchestra.js ===
+// Cursores (setas comuns desenhadas com Three.js, cópia local em /vendor) que montam os blocos da aba.
+// O movimento é calculado a cada quadro (requestAnimationFrame) por arcos de Bézier
+// com suavização e um "clique" que afunda o cursor de leve.
+// Nunca bloqueia: a camada não recebe cliques e qualquer tecla/clique termina a montagem.
+import * as THREE from "../vendor/three.module.min.js";
+import { canPlayCursorOrchestra, planRoutes, bezier, arcControls, travelTime, easeInOutCubic } from "./cursor-path.js";
+
+const PEGAR = 0.35, SOLTAR = 0.35, PAUSA = 0.3;
+
+// Preferência explícita da pessoa (botão "Animações"). Padrão: ligado, mesmo com os
+// efeitos de animação do sistema desligados, porque as animações fazem parte da apresentação.
+const CHAVE = "doce-amor:animacoes";
+export function animacoesLigadas() {
+  try { return localStorage.getItem(CHAVE) !== "off"; } catch { return true; }
+}
+export function definirAnimacoes(ligado) {
+  try { localStorage.setItem(CHAVE, ligado ? "on" : "off"); } catch { /* sem armazenamento: vale só nesta aba */ }
+}
+
+export function cursorsAllowed() {
+  return canPlayCursorOrchestra({
+    reducedMotion: !animacoesLigadas(),
+    finePointer: matchMedia("(pointer: fine)").matches,
+    compactViewport: matchMedia("(max-width: 900px)").matches,
+  });
+}
+
+// ───────── seta comum de sistema (branca, borda preta, ponta na origem)
+const SETA = [[0, 0], [0, -17], [4, -13], [7, -20], [10, -19], [7, -12], [12, -12]];
+function setaForma() {
+  const s = new THREE.Shape();
+  s.moveTo(...SETA[0]); SETA.slice(1).forEach((p) => s.lineTo(...p)); s.closePath();
+  return s;
+}
+
+// bloco preso na seta: segue o deslocamento sem transição e fica por cima dos outros
+function arrastarPeca(peca, dx, dy, opacidade) {
+  peca.classList.remove("peca-pendente");
+  Object.assign(peca.style, { transition: "none", zIndex: "40", transform: `translate(${dx}px, ${dy}px)`, opacity: String(opacidade) });
+}
+function soltarPeca(peca) {
+  peca.classList.remove("peca-pendente");
+  if (!peca.style.transform && !peca.style.opacity) return;
+  Object.assign(peca.style, { transition: "", zIndex: "", transform: "", opacity: "" });
+}
+
+export class CursorOrchestra {
+  constructor() {
+    this.ativo = null;
+    this.canvas = null;
+  }
+
+  #montarCena() {
+    if (this.renderer) return true;
+    try {
+      this.canvas = document.createElement("canvas");
+      this.canvas.className = "cursor-layer";
+      this.canvas.setAttribute("aria-hidden", "true");
+      document.body.append(this.canvas);
+      this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, alpha: true, antialias: true });
+    } catch {
+      this.canvas?.remove(); this.canvas = null; return false;
+    }
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    this.cena = new THREE.Scene();
+    this.camera = new THREE.OrthographicCamera(0, 1, 0, -1, -500, 500);
+    const geo = new THREE.ShapeGeometry(setaForma());
+    const borda = new THREE.BufferGeometry().setFromPoints([...SETA, SETA[0]].map(([x, y]) => new THREE.Vector3(x, y, 1)));
+    const corpoMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    const bordaMat = new THREE.LineBasicMaterial({ color: 0x000000 });
+    this.cursores = [1, 2, 3, 4].map(() => {
+      const seta = new THREE.Group();
+      seta.add(new THREE.Mesh(geo, corpoMat), new THREE.Line(borda, bordaMat));
+      seta.visible = false;
+      this.cena.add(seta);
+      return { seta };
+    });
+    return true;
+  }
+
+  #ajustarTamanho() {
+    const W = innerWidth, H = innerHeight;
+    this.renderer.setSize(W, H, false);
+    Object.assign(this.camera, { left: 0, right: W, top: 0, bottom: -H });
+    this.camera.updateProjectionMatrix();
+  }
+
+  /** Monta os blocos: cada cursor busca um bloco na lateral da tela e o arrasta até o lugar.
+   *  Sem WebGL ou sem permissão: só um surgimento curto. */
+  play(pecas) {
+    this.terminar();
+    if (!pecas.length) return;
+    pecas.forEach((p) => p.classList.add("peca-pendente"));
+    if (!cursorsAllowed() || !this.#montarCena()) {
+      pecas.forEach((p, i) => this.#revelar(p, null, i * 110));
+      return;
+    }
+    this.#ajustarTamanho();
+    const W = innerWidth;
+    // para cada bloco: de que lado vem, onde a seta segura (ponto da borda que entra primeiro)
+    // e onde a pega começa (perto da borda da tela, com o bloco quase todo de fora)
+    const pegas = pecas.map((p, i) => {
+      const r = p.getBoundingClientRect(), cx = r.left + r.width / 2;
+      const esquerda = cx < W * 0.45 ? true : cx > W * 0.55 ? false : i % 2 === 0;
+      const y = r.top + Math.min(r.height * 0.3, 60);
+      const segura = { x: esquerda ? r.right - 34 : r.left + 34, y };
+      const comeco = { x: esquerda ? 60 : W - 60, y };
+      return { esquerda, segura, comeco, chegada: { x: esquerda ? -40 : W + 40, y: y + 90 } };
+    });
+
+    const roteiros = planRoutes(pecas.length, this.cursores.length).map((rota, c) => {
+      const passos = []; let t = c * 0.55, de = pegas[rota[0]].chegada;
+      rota.forEach((i) => {
+        const { comeco, segura, esquerda } = pegas[i];
+        const dur = travelTime(de, comeco), [c1, c2] = arcControls(de, comeco, esquerda ? 1 : -1, 0.2);
+        passos.push({ tipo: "voo", t0: t, t1: t + dur, de, c1, c2, para: comeco });
+        t += dur;
+        passos.push({ tipo: "pegar", t0: t, t1: t + PEGAR, em: comeco, peca: i, segura });
+        t += PEGAR;
+        const arr = Math.min(2, Math.max(1.2, Math.abs(segura.x - comeco.x) / 550));
+        const [a1, a2] = arcControls(comeco, segura, esquerda ? -1 : 1, 0.04);
+        passos.push({ tipo: "arrastar", t0: t, t1: t + arr, de: comeco, c1: a1, c2: a2, para: segura, peca: i, segura });
+        t += arr;
+        passos.push({ tipo: "soltar", t0: t, t1: t + SOLTAR, em: segura, peca: i });
+        t += SOLTAR + PAUSA; de = segura;
+      });
+      const ultima = pegas[rota.at(-1)], fim = { x: ultima.esquerda ? -60 : W + 60, y: ultima.segura.y + 160 };
+      const dur = travelTime(de, fim), [c1, c2] = arcControls(de, fim, ultima.esquerda ? -1 : 1, 0.18);
+      passos.push({ tipo: "voo", t0: t, t1: t + dur, de, c1, c2, para: fim, saida: true });
+      return passos;
+    });
+    const total = Math.max(...roteiros.map((r) => r.at(-1).t1));
+    this.canvas.classList.add("ativa");
+    document.documentElement.classList.add("montando");
+
+    const inicio = performance.now();
+    const pular = () => this.terminar();
+    addEventListener("pointerdown", pular, { once: true, capture: true });
+    addEventListener("keydown", pular, { once: true, capture: true });
+    addEventListener("wheel", pular, { once: true, passive: true });
+    addEventListener("resize", pular, { once: true });
+    this.ativo = { pecas, quadro: 0, pular };
+
+    const quadro = (agora) => {
+      if (!this.ativo) return;
+      const t = (agora - inicio) / 1000;
+      roteiros.forEach((r, c) => this.#posar(this.cursores[c], r, t, pecas));
+      this.renderer.render(this.cena, this.camera);
+      if (t < total + 0.3) this.ativo.quadro = requestAnimationFrame(quadro);
+      else this.terminar();
+    };
+    this.ativo.quadro = requestAnimationFrame(quadro);
+  }
+
+  #posar(cu, roteiro, t, pecas) {
+    const passo = roteiro.find((p) => t < p.t1) ?? roteiro.at(-1);
+    if (t < roteiro[0].t0) { cu.seta.visible = false; return; }
+    cu.seta.visible = true;
+    const k = Math.min(1, Math.max(0, (t - passo.t0) / (passo.t1 - passo.t0)));
+    let pos, pressao = 0;
+    if (passo.tipo === "voo") {
+      pos = bezier(passo.de, passo.c1, passo.c2, passo.para, easeInOutCubic(k));
+      if (passo.saida && k >= 1) cu.seta.visible = false;
+    } else if (passo.tipo === "pegar") {
+      pos = passo.em; pressao = easeInOutCubic(k);
+      // o bloco espia na borda, com a ponta presa na seta
+      arrastarPeca(pecas[passo.peca], pos.x - passo.segura.x, pos.y - passo.segura.y, 0.25 * k);
+    } else if (passo.tipo === "arrastar") {
+      const e = easeInOutCubic(k);
+      pos = bezier(passo.de, passo.c1, passo.c2, passo.para, e); pressao = 1;
+      arrastarPeca(pecas[passo.peca], pos.x - passo.segura.x, pos.y - passo.segura.y, 0.25 + 0.75 * e);
+    } else {
+      pos = passo.em; pressao = 1 - easeInOutCubic(k);
+      soltarPeca(pecas[passo.peca]);
+    }
+    cu.seta.position.set(pos.x, -pos.y, 0);
+    cu.seta.scale.setScalar(1 - pressao * 0.12); // segurando: afunda de leve
+  }
+
+  #revelar(peca, ponto, atraso) {
+    const r = peca.getBoundingClientRect();
+    const origem = ponto ? `${ponto.x - r.left}px ${ponto.y - r.top}px` : "50% 0%";
+    peca.style.transformOrigin = origem;
+    peca.classList.remove("peca-pendente");
+    peca.animate(
+      [
+        { opacity: 0, transform: "translateY(10px) scale(.98)", filter: "blur(4px)" },
+        { opacity: 1, offset: 0.55, filter: "blur(0)" },
+        { opacity: 1, transform: "none", filter: "blur(0)" },
+      ],
+      { duration: 1000, delay: atraso, easing: "cubic-bezier(.22,1,.36,1)", fill: "backwards" },
+    );
+  }
+
+  /** Termina na hora: revela o que faltar e some com os cursores. */
+  terminar() {
+    const a = this.ativo; this.ativo = null;
+    if (!a) return;
+    cancelAnimationFrame(a.quadro);
+    removeEventListener("pointerdown", a.pular, { capture: true });
+    removeEventListener("keydown", a.pular, { capture: true });
+    removeEventListener("wheel", a.pular);
+    removeEventListener("resize", a.pular);
+    a.pecas.forEach(soltarPeca);
+    document.documentElement.classList.remove("montando");
+    this.cursores?.forEach((c) => { c.seta.visible = false; });
+    this.canvas?.classList.remove("ativa");
+    this.renderer?.clear();
+  }
+}
+
+
+=== frontend\js\cursor-path.js ===
+// Trajetórias dos cursores: contas puras (sem DOM nem WebGL), testáveis no Node.
+
+/** Só anima com mouse, tela grande e sem pedido de movimento reduzido. */
+export function canPlayCursorOrchestra({ reducedMotion, finePointer, compactViewport = false }) {
+  return !reducedMotion && finePointer && !compactViewport;
+}
+
+/** Distribui os blocos entre os cursores em rodízio: [[0,3],[1,4],[2]]. */
+export function planRoutes(nPieces, nCursors = 3) {
+  const rotas = Array.from({ length: Math.min(nCursors, nPieces) }, () => []);
+  for (let i = 0; i < nPieces; i += 1) rotas[i % rotas.length].push(i);
+  return rotas;
+}
+
+export const easeInOutCubic = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+export const easeOutExpo = (t) => (t >= 1 ? 1 : 1 - 2 ** (-10 * t));
+
+/** Curva de Bézier cúbica. */
+export function bezier(p0, p1, p2, p3, t) {
+  const u = 1 - t;
+  return {
+    x: u * u * u * p0.x + 3 * u * u * t * p1.x + 3 * u * t * t * p2.x + t * t * t * p3.x,
+    y: u * u * u * p0.y + 3 * u * u * t * p1.y + 3 * u * t * t * p2.y + t * t * t * p3.y,
+  };
+}
+
+/** Pontos de controle de um arco suave de a até b (curva para um lado, como a mão faz). */
+export function arcControls(a, b, lado = 1, curvatura = 0.28) {
+  const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy) || 1;
+  const nx = (-dy / L) * L * curvatura * lado, ny = (dx / L) * L * curvatura * lado;
+  return [{ x: a.x + dx * 0.25 + nx, y: a.y + dy * 0.25 + ny }, { x: a.x + dx * 0.75 + nx * 0.6, y: a.y + dy * 0.75 + ny * 0.6 }];
+}
+
+/** Tempo de viagem proporcional à distância, dentro de um limite confortável. */
+export function travelTime(a, b) {
+  return Math.min(1.4, Math.max(0.75, Math.hypot(b.x - a.x, b.y - a.y) / 700));
+}
+
+
+=== frontend\js\dicas.js ===
+// Dicas de cada aba, mostradas no canto do visor (uma por vez, em ordem). Curtas: cabem no cartão sem rolar.
+export const DICAS = {
+  funcoes: [
+    "Função: cada x tem um único y. Se um x der dois resultados, não é função.",
+    "Na quadrática, a > 0 abre para cima (mínimo); a < 0 abre para baixo (máximo).",
+    "O vértice da parábola fica em x = −b/(2a).",
+    "Na afim, o coeficiente angular é quanto y muda quando x anda 1.",
+    "A exponencial cresce multiplicando, por isso dispara rápido.",
+  ],
+  limites: [
+    "Limite é para onde f(x) vai quando x se aproxima, não o valor no ponto.",
+    "Deu 0/0? É indeterminação: fatore e simplifique antes de substituir.",
+    "O limite só existe se pela esquerda e pela direita der o mesmo valor.",
+    "No infinito, olhe os termos de maior grau: são eles que mandam.",
+    "Um buraco no gráfico não impede o limite de existir.",
+  ],
+  derivadas: [
+    "Derivada é a inclinação da reta tangente naquele ponto.",
+    "Regra da potência: (xⁿ)′ = n·xⁿ⁻¹.",
+    "f′ > 0: sobe. f′ < 0: desce. f′ = 0: possível máximo ou mínimo.",
+    "Regra da cadeia: derive a de fora e multiplique pela derivada da de dentro.",
+    "Regra do produto: (f·g)′ = f′·g + f·g′.",
+  ],
+  integrais: [
+    "Integral definida é a área sob a curva; abaixo do eixo x conta negativo.",
+    "Mais retângulos na soma de Riemann, mais perto da área exata.",
+    "Integrar é desfazer a derivada. Na indefinida, não esqueça o + C.",
+    "Teorema Fundamental: a área de a até b é F(b) − F(a).",
+    "∫ xⁿ dx = xⁿ⁺¹/(n+1) + C, com n ≠ −1.",
+  ],
+};
+
+
+=== frontend\js\graph.js ===
+// Plano cartesiano em canvas, sem bibliotecas. Desenha uma função qualquer, com
+// extras opcionais: reta tangente, área entre a e b, pontos marcados e buracos.
+
+/** Amostra f no intervalo; pontos não finitos viram null (quebra a linha). */
+export function sample(f, xMin, xMax, steps = 240) {
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const x = xMin + ((xMax - xMin) * i) / steps;
+    const y = f(x);
+    return Number.isFinite(y) ? { x, y } : null;
+  });
+}
+
+/** Intervalo de y que cabe a curva, com folga, e ignora valores absurdos. */
+export function autoRange(f, xMin, xMax, extras = []) {
+  const ys = sample(f, xMin, xMax, 160).filter(Boolean).map((p) => p.y).concat(extras).filter((y) => Math.abs(y) < 1e6);
+  let yMin = Math.min(...ys), yMax = Math.max(...ys);
+  if (yMin === yMax) { yMin -= 5; yMax += 5; }
+  const pad = (yMax - yMin) * 0.12;
+  return { xMin, xMax, yMin: yMin - pad, yMax: yMax + pad };
+}
+
+/** Passo "bonito" (1, 2, 5 × 10ⁿ) para a grade. */
+export function niceStep(span, alvo = 8) {
+  const bruto = span / alvo, p = 10 ** Math.floor(Math.log10(bruto)), m = bruto / p;
+  return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p;
+}
+
+/**
+ * Desenha o quadro do gráfico. Parâmetros de animação (todos 0..1, padrão 1):
+ *   revelar   — fração da largura já desenhada (a curva "se escreve" da esquerda para a direita)
+ *   extras    — opacidade da tangente, da área e dos buracos
+ *   ponto     — escala do ponto marcado (entra com um pequeno salto)
+ *   pulso     — anel que se expande em volta do ponto (0 = sem anel)
+ * Cenas didáticas (opcionais):
+ *   secante   — { x0, x1, alfa }: reta secante que gira até a tangente quando x1 → x0
+ *   aproximar — [{ x, y, lado }]: pontos que correm pela curva até o limite, com o valor ao lado
+ *   riemann   — { a, b, n, alfa }: retângulos (ponto médio) que aproximam a área
+ *   mira      — { x }: linha e etiqueta (x; f(x)) sob o mouse
+ *   alcas     — mostra as alças arrastáveis (ponto e bordas da área)
+ */
+export function drawGraph(canvas, { f, range, tangent, area, points = [], holes = [], cores, fonte = "system-ui", revelar = 1, extras = 1, ponto = 1, pulso = 0, secante, aproximar, riemann, mira, alcas = false }) {
+  const ctx = canvas.getContext("2d");
+  const ratio = window.devicePixelRatio || 1;
+  const W = canvas.clientWidth, H = canvas.clientHeight;
+  if (!W || !H) return;
+  const cw = Math.round(W * ratio), ch = Math.round(H * ratio);
+  if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch; }
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  const pad = { t: 18, r: 18, b: 34, l: 52 };
+  const w = W - pad.l - pad.r, h = H - pad.t - pad.b;
+  const { xMin, xMax, yMin, yMax } = range;
+  const X = (x) => pad.l + ((x - xMin) / (xMax - xMin)) * w;
+  const Y = (y) => pad.t + h - ((y - yMin) / (yMax - yMin)) * h;
+  const base = Y(Math.max(yMin, Math.min(0, yMax)));
+  // o app usa este mapa para converter o mouse em x (arrastar e mira)
+  canvas.__mapa = { xDe: (px) => xMin + ((px - pad.l) / w) * (xMax - xMin), X, Y, pad, w, h };
+  ctx.clearRect(0, 0, W, H);
+
+  // grade e rótulos
+  const sx = niceStep(xMax - xMin), sy = niceStep(yMax - yMin, 6);
+  ctx.lineWidth = 1; ctx.strokeStyle = cores.grade;
+  ctx.font = `500 12px ${fonte}`; ctx.fillStyle = cores.rotulo;
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (let x = Math.ceil(xMin / sx) * sx; x <= xMax + 1e-9; x += sx) {
+    ctx.beginPath(); ctx.moveTo(X(x), pad.t); ctx.lineTo(X(x), pad.t + h); ctx.stroke();
+    ctx.fillText(fmt(x), X(x), pad.t + h + 8);
+  }
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let y = Math.ceil(yMin / sy) * sy; y <= yMax + 1e-9; y += sy) {
+    ctx.beginPath(); ctx.moveTo(pad.l, Y(y)); ctx.lineTo(pad.l + w, Y(y)); ctx.stroke();
+    ctx.fillText(fmt(y), pad.l - 8, Y(y));
+  }
+
+  // eixos
+  ctx.strokeStyle = cores.eixo; ctx.lineWidth = 1.5; ctx.beginPath();
+  if (yMin <= 0 && yMax >= 0) { ctx.moveTo(pad.l, Y(0)); ctx.lineTo(pad.l + w, Y(0)); }
+  if (xMin <= 0 && xMax >= 0) { ctx.moveTo(X(0), pad.t); ctx.lineTo(X(0), pad.t + h); }
+  ctx.stroke();
+
+  // tudo o que é "conteúdo" fica recortado na área do gráfico e na fração já revelada
+  ctx.save(); ctx.beginPath(); ctx.rect(pad.l, pad.t - 4, w * revelar, h + 8); ctx.clip();
+
+  // área (integral definida): degradê da curva até o eixo
+  if (area && extras > 0) {
+    const a = Math.max(area.a, xMin), b = Math.min(area.b, xMax);
+    const pts = sample(f, a, b, 160).filter(Boolean);
+    const g = ctx.createLinearGradient(0, pad.t, 0, pad.t + h);
+    g.addColorStop(0, cores.areaForte); g.addColorStop(1, cores.area);
+    ctx.globalAlpha = extras;
+    ctx.beginPath(); ctx.moveTo(X(a), base);
+    pts.forEach((p) => ctx.lineTo(X(p.x), Y(p.y)));
+    ctx.lineTo(X(b), base); ctx.closePath();
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = cores.curva; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+    ctx.beginPath(); ctx.moveTo(X(a), base); ctx.lineTo(X(a), Y(f(a))); ctx.moveTo(X(b), base); ctx.lineTo(X(b), Y(f(b))); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+  }
+
+  if (riemann && riemann.alfa > 0) {
+    const { a, b, n } = riemann, dx = (b - a) / n;
+    ctx.globalAlpha = riemann.alfa;
+    for (let i = 0; i < n; i += 1) {
+      const xm = a + (i + 0.5) * dx, y = f(xm);
+      if (!Number.isFinite(y)) continue;
+      const x1 = X(a + i * dx), x2 = X(a + (i + 1) * dx), yy = Y(y);
+      ctx.fillStyle = i % 2 ? cores.retangulo2 : cores.retangulo;
+      ctx.fillRect(x1, Math.min(yy, base), x2 - x1, Math.abs(base - yy));
+      if (n <= 32) { ctx.strokeStyle = cores.fundo; ctx.lineWidth = 1; ctx.strokeRect(x1, Math.min(yy, base), x2 - x1, Math.abs(base - yy)); }
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // curva (quebra em pontos inválidos e em saltos verticais), com um brilho suave por baixo
+  const tracar = () => {
+    ctx.beginPath(); let prev = null;
+    for (const p of sample(f, xMin, xMax)) {
+      if (!p) { prev = null; continue; }
+      const salto = prev && Math.abs(Y(p.y) - Y(prev.y)) > h * 0.8;
+      if (!prev || salto) ctx.moveTo(X(p.x), Y(p.y)); else ctx.lineTo(X(p.x), Y(p.y));
+      prev = p;
+    }
+  };
+  ctx.lineJoin = "round"; ctx.lineCap = "round";
+  ctx.strokeStyle = cores.brilho; ctx.lineWidth = 10; tracar(); ctx.stroke();
+  ctx.strokeStyle = cores.curva; ctx.lineWidth = 3.2; tracar(); ctx.stroke();
+
+  if (tangent && extras > 0) {
+    ctx.globalAlpha = extras;
+    ctx.strokeStyle = cores.tangente; ctx.lineWidth = 2.2; ctx.setLineDash([8, 6]);
+    ctx.beginPath(); ctx.moveTo(X(xMin), Y(tangent(xMin))); ctx.lineTo(X(xMax), Y(tangent(xMax))); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha = 1;
+  }
+  if (secante && secante.alfa > 0) {
+    const { x0, x1 } = secante, y0 = f(x0), y1 = f(x1);
+    if (Number.isFinite(y0) && Number.isFinite(y1) && x1 !== x0) {
+      const m = (y1 - y0) / (x1 - x0), r = (x) => y0 + m * (x - x0);
+      ctx.globalAlpha = secante.alfa;
+      ctx.strokeStyle = cores.secante; ctx.lineWidth = 2.4;
+      ctx.beginPath(); ctx.moveTo(X(xMin), Y(r(xMin))); ctx.lineTo(X(xMax), Y(r(xMax))); ctx.stroke();
+      ctx.fillStyle = cores.secante;
+      ctx.beginPath(); ctx.arc(X(x1), Y(y1), 5.5, 0, Math.PI * 2); ctx.fill();
+      // "h" desenhado como uma cota entre x0 e x1
+      const yb = Math.min(pad.t + h - 6, Math.max(Y(y0), Y(y1)) + 22);
+      ctx.strokeStyle = cores.secante; ctx.lineWidth = 1.2; ctx.beginPath();
+      ctx.moveTo(X(x0), yb - 5); ctx.lineTo(X(x0), yb + 5); ctx.moveTo(X(x1), yb - 5); ctx.lineTo(X(x1), yb + 5);
+      ctx.moveTo(X(x0), yb); ctx.lineTo(X(x1), yb); ctx.stroke();
+      ctx.font = `italic 600 13px ${fonte}`; ctx.textAlign = "center"; ctx.textBaseline = "top";
+      ctx.fillText(`h = ${fmt3(x1 - x0)}`, (X(x0) + X(x1)) / 2, yb + 6);
+      ctx.globalAlpha = 1;
+    }
+  }
+  ctx.restore();
+
+  for (const p of points) {
+    const px = X(p.x), py = Y(p.y);
+    if (pulso > 0 && pulso < 1) {
+      ctx.beginPath(); ctx.arc(px, py, 7 + pulso * 22, 0, Math.PI * 2);
+      ctx.strokeStyle = cores.curva; ctx.globalAlpha = (1 - pulso) * 0.7; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    if (ponto <= 0) continue;
+    ctx.beginPath(); ctx.arc(px, py, 7 * ponto, 0, Math.PI * 2);
+    ctx.fillStyle = cores.ponto; ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = cores.fundo; ctx.stroke();
+  }
+  ctx.globalAlpha = extras;
+  for (const p of holes) {
+    ctx.beginPath(); ctx.arc(X(p.x), Y(p.y), 6.5, 0, Math.PI * 2);
+    ctx.fillStyle = cores.fundo; ctx.fill(); ctx.lineWidth = 2.6; ctx.strokeStyle = cores.curva; ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  for (const a of aproximar ?? []) {
+    if (!Number.isFinite(a.y) || a.x < xMin || a.x > xMax) continue;
+    const px = X(a.x), py = Y(a.y), cor = a.lado === "esquerda" ? cores.esquerda : cores.direita;
+    ctx.beginPath(); ctx.arc(px, py, 7, 0, Math.PI * 2); ctx.fillStyle = cor; ctx.fill();
+    ctx.lineWidth = 2.5; ctx.strokeStyle = cores.fundo; ctx.stroke();
+    etiqueta(ctx, `${fmt3(a.y)}`, px + (a.lado === "esquerda" ? -12 : 12), py - 16, a.lado === "esquerda" ? "right" : "left", cor, fonte);
+  }
+
+  if (alcas && area) {
+    for (const xb of [area.a, area.b]) {
+      if (xb < xMin || xb > xMax) continue;
+      const px = X(xb), py = base;
+      ctx.fillStyle = cores.fundo; ctx.strokeStyle = cores.curva; ctx.lineWidth = 2;
+      redondo(ctx, px - 7, py - 13, 14, 26, 6); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = cores.curva; ctx.lineWidth = 1.2; ctx.beginPath();
+      ctx.moveTo(px - 2, py - 5); ctx.lineTo(px - 2, py + 5); ctx.moveTo(px + 2, py - 5); ctx.lineTo(px + 2, py + 5); ctx.stroke();
+    }
+  }
+
+  if (mira && mira.x >= xMin && mira.x <= xMax) {
+    const y = f(mira.x);
+    if (Number.isFinite(y)) {
+      const px = X(mira.x), py = Y(y);
+      ctx.strokeStyle = cores.mira; ctx.lineWidth = 1; ctx.setLineDash([3, 4]);
+      ctx.beginPath(); ctx.moveTo(px, pad.t); ctx.lineTo(px, pad.t + h); ctx.stroke(); ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(px, py, 4.5, 0, Math.PI * 2); ctx.fillStyle = cores.curva; ctx.fill();
+      etiqueta(ctx, `(${fmt3(mira.x)}; ${fmt3(y)})`, px + (px > pad.l + w * 0.7 ? -12 : 12), py - 18, px > pad.l + w * 0.7 ? "right" : "left", cores.ponto, fonte);
+    }
+  }
+}
+
+function redondo(ctx, x, y, w, h, r) {
+  ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+/** Plaquinha arredondada com texto (valores ao lado dos pontos). */
+function etiqueta(ctx, texto, x, y, alinhar, cor, fonte) {
+  ctx.font = `600 12.5px ${fonte}`;
+  const tw = ctx.measureText(texto).width + 14, th = 22, x0 = alinhar === "right" ? x - tw : x;
+  ctx.fillStyle = cor; redondo(ctx, x0, y - th / 2, tw, th, 7); ctx.fill();
+  ctx.fillStyle = "#ffffff"; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(texto, x0 + 7, y + 0.5);
+}
+
+const fmt3 = (v) => new Intl.NumberFormat("pt-BR", { maximumFractionDigits: Math.abs(v) < 1 ? 3 : 2 }).format(Math.abs(v) < 1e-9 ? 0 : v).replace("-", "−");
+
+const fmt = (v) => {
+  const r = Math.abs(v) < 1e-9 ? 0 : v;
+  return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(r).replace("-", "−");
+};
+
+
+=== frontend\js\math.js ===
+// Contas da calculadora. Tudo aqui é puro (sem DOM), para testar e para o back-end
+// poder trocar por chamadas à API sem mexer nas telas.
+
+export function formatNumber(value, casas = 2) {
+  if (value === Infinity) return "+∞";
+  if (value === -Infinity) return "−∞";
+  return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: casas }).format(value).replace("-", "−");
+}
+
+/** Lê um número digitado ("2,5", "-3", " 10 ") e confere o intervalo permitido. */
+export function lerNumero(texto, { min = -1000, max = 1000, nome = "o valor" } = {}) {
+  const limpo = String(texto ?? "").trim().replace(/\s/g, "").replace("−", "-").replace(",", ".");
+  if (limpo === "") return { ok: false, erro: `Digite ${nome}.` };
+  if (!/^[-+]?(\d+\.?\d*|\.\d+)$/.test(limpo)) return { ok: false, erro: `${cap(nome)} precisa ser um número.` };
+  const valor = Number(limpo);
+  if (valor < min || valor > max) return { ok: false, erro: `Use ${nome} entre ${formatNumber(min)} e ${formatNumber(max)}.` };
+  return { ok: true, valor };
+}
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+// ───────── Funções (5 tipos)
+export const FUNCOES = {
+  constant: {
+    nome: "Constante", letra: "C", formula: "C(x) = 55", f: () => 55,
+    dominio: "ℝ (todos os reais)", imagem: "{55}", intervalo: { xMin: -10, xMax: 10, yMin: 0, yMax: 100 },
+    explica: () => "A saída é sempre 55, seja qual for o x.",
+  },
+  linear: {
+    nome: "Afim", letra: "A", formula: "A(x) = 40 + 3x", f: (x) => 40 + 3 * x,
+    dominio: "ℝ (todos os reais)", imagem: "ℝ (todos os reais)", intervalo: { xMin: -10, xMax: 10, yMin: 0, yMax: 100 },
+    explica: () => "Cada unidade a mais em x soma 3 na saída (coeficiente angular 3).",
+  },
+  quadratic: {
+    nome: "Quadrática", letra: "Q", formula: "Q(x) = −0,04(x − 50)² + 100", f: (x) => -0.04 * (x - 50) ** 2 + 100,
+    dominio: "ℝ (todos os reais)", imagem: "(−∞, 100]", intervalo: { xMin: 0, xMax: 100, yMin: 0, yMax: 105 },
+    explica: () => "Parábola com concavidade para baixo: o máximo é 100, no vértice x = 50.",
+  },
+  absolute: {
+    nome: "Modular", letra: "M", formula: "M(x) = 100 − 2|x − 50|", f: (x) => 100 - 2 * Math.abs(x - 50),
+    dominio: "ℝ (todos os reais)", imagem: "(−∞, 100]", intervalo: { xMin: 0, xMax: 100, yMin: 0, yMax: 105 },
+    explica: () => "A saída cai 2 a cada unidade de distância entre x e 50.",
+  },
+  exponential: {
+    nome: "Exponencial", letra: "E", formula: "E(x) = 100(1 − e^(−0,12x))", f: (x) => 100 * (1 - Math.exp(-0.12 * x)),
+    dominio: "ℝ (todos os reais)", imagem: "(−∞, 100)", intervalo: { xMin: 0, xMax: 40, yMin: 0, yMax: 105 },
+    explica: () => "Cresce rápido no começo e se aproxima de 100 sem nunca chegar (assíntota y = 100).",
+  },
+};
+
+export function calculateFunction(kind, x) {
+  return FUNCOES[kind].f(x);
+}
+
+/** Tabela de entradas e saídas em volta de x (5 linhas). */
+export function tabelaFuncao(kind, x, passo = 1) {
+  return [-2, -1, 0, 1, 2].map((k) => {
+    const xi = x + k * passo;
+    return { x: xi, y: calculateFunction(kind, xi) };
+  });
+}
+
+// ───────── Limites (3 casos)
+const APROX = [0.1, 0.01, 0.001];
+export const LIMITES = {
+  removivel: {
+    nome: "Removível",
+    formula: (a) => `lim x→${formatNumber(a)} (x² − ${formatNumber(a * a)}) / (x − ${formatNumber(a)})`,
+    pedeA: true,
+    calcular(a) {
+      const f = (x) => (x * x - a * a) / (x - a);
+      return {
+        existe: true, valor: 2 * a,
+        esquerda: APROX.map((h) => ({ x: a - h, y: f(a - h) })),
+        direita: APROX.map((h) => ({ x: a + h, y: f(a + h) })),
+        passos: [
+          `Em x = ${formatNumber(a)} a fração vira 0/0: indeterminada.`,
+          `Fatore: x² − ${formatNumber(a * a)} = (x − ${formatNumber(a)})(x + ${formatNumber(a)}).`,
+          `Simplifique (x − ${formatNumber(a)}) e substitua: ${formatNumber(a)} + ${formatNumber(a)} = ${formatNumber(2 * a)}.`,
+        ],
+      };
+    },
+  },
+  lateral: {
+    nome: "Não existe",
+    formula: () => "lim x→0 |x| / x",
+    pedeA: false,
+    calcular() {
+      const f = (x) => Math.abs(x) / x;
+      return {
+        existe: false, valor: null,
+        esquerda: APROX.map((h) => ({ x: -h, y: f(-h) })),
+        direita: APROX.map((h) => ({ x: h, y: f(h) })),
+        passos: [
+          "Pela esquerda (x < 0), |x| = −x, então a fração vale −1.",
+          "Pela direita (x > 0), |x| = x, então a fração vale 1.",
+          "Os limites laterais são diferentes (−1 ≠ 1): o limite não existe.",
+        ],
+      };
+    },
+  },
+  infinito: {
+    nome: "No infinito",
+    formula: () => "lim x→∞ (3x² + 1) / (x² + 2)",
+    pedeA: false,
+    calcular() {
+      const f = (x) => (3 * x * x + 1) / (x * x + 2);
+      return {
+        existe: true, valor: 3,
+        esquerda: [10, 100, 1000].map((x) => ({ x, y: f(x) })),
+        direita: [],
+        passos: [
+          "Divida numerador e denominador por x², a maior potência.",
+          "Fica (3 + 1/x²) / (1 + 2/x²); os termos com x no denominador vão a 0.",
+          "Sobra 3 / 1 = 3: a função se aproxima de 3 quando x cresce.",
+        ],
+      };
+    },
+  },
+};
+
+// ───────── Derivadas (6 regras)
+export const DERIVADAS = {
+  constante: { nome: "Constante", regra: "d/dx (c) = 0", f: () => 55, df: () => 0, fTexto: "f(x) = 55", dfTexto: "f′(x) = 0" },
+  potencia: { nome: "Potência", regra: "d/dx (xⁿ) = n·xⁿ⁻¹", f: (x) => x ** 3, df: (x) => 3 * x * x, fTexto: "f(x) = x³", dfTexto: "f′(x) = 3x²" },
+  soma: { nome: "Soma", regra: "(f + g)′ = f′ + g′", f: (x) => 2 * x ** 3 - 5 * x + 10, df: (x) => 6 * x * x - 5, fTexto: "f(x) = 2x³ − 5x + 10", dfTexto: "f′(x) = 6x² − 5" },
+  produto: { nome: "Produto", regra: "(f·g)′ = f′g + fg′", f: (x) => x * x * (x + 3), df: (x) => 2 * x * (x + 3) + x * x, fTexto: "f(x) = x²(x + 3)", dfTexto: "f′(x) = 2x(x + 3) + x²" },
+  quociente: {
+    nome: "Quociente", regra: "(f/g)′ = (f′g − fg′) / g²", f: (x) => (x * x + 1) / (x + 2), df: (x) => (x * x + 4 * x - 1) / (x + 2) ** 2,
+    fTexto: "f(x) = (x² + 1) / (x + 2)", dfTexto: "f′(x) = (x² + 4x − 1) / (x + 2)²", proibido: (x) => (x === -2 ? "x = −2 zera o denominador: a função não existe aí." : null),
+  },
+  cadeia: { nome: "Cadeia", regra: "(f∘g)′ = f′(g(x))·g′(x)", f: (x) => 100 * (1 - Math.exp(-0.12 * x)), df: (x) => 12 * Math.exp(-0.12 * x), fTexto: "f(x) = 100(1 − e^(−0,12x))", dfTexto: "f′(x) = 12e^(−0,12x)" },
+};
+
+/** Derivada em x0: valor exato pela regra, conferência numérica e reta tangente. */
+export function calcularDerivada(regra, x0) {
+  const d = DERIVADAS[regra];
+  const erro = d.proibido?.(x0);
+  if (erro) return { ok: false, erro };
+  const y0 = d.f(x0), inclinacao = d.df(x0), h = 1e-4;
+  const numerica = (d.f(x0 + h) - d.f(x0 - h)) / (2 * h);
+  return { ok: true, y0, inclinacao, numerica, tangente: (x) => y0 + inclinacao * (x - x0) };
+}
+
+// ───────── Integrais (5 indefinidas + 1 definida)
+export const INTEGRAIS = {
+  constante: { nome: "Constante", integral: "∫ 15 dx", primitiva: "15x + C", f: () => 15, F: (x) => 15 * x, regra: "A integral de uma constante é a constante vezes x.", a: 0, b: 4 },
+  potencia: { nome: "Potência", integral: "∫ x³ dx", primitiva: "x⁴/4 + C", f: (x) => x ** 3, F: (x) => x ** 4 / 4, regra: "Some 1 ao expoente e divida pelo novo expoente.", a: 0, b: 2 },
+  soma: { nome: "Soma", integral: "∫ (3x² − 2x + 5) dx", primitiva: "x³ − x² + 5x + C", f: (x) => 3 * x * x - 2 * x + 5, F: (x) => x ** 3 - x * x + 5 * x, regra: "Integre termo a termo e some.", a: 0, b: 2 },
+  exponencial: { nome: "Exponencial", integral: "∫ e^(0,12x) dx", primitiva: "e^(0,12x) / 0,12 + C", f: (x) => Math.exp(0.12 * x), F: (x) => Math.exp(0.12 * x) / 0.12, regra: "Divida pela constante do expoente (0,12).", a: 0, b: 10 },
+  trigonometrica: { nome: "Trigonométrica", integral: "∫ cos(x) dx", primitiva: "sen(x) + C", f: Math.cos, F: Math.sin, regra: "A derivada de sen(x) é cos(x).", a: 0, b: 1.5708 },
+  definida: { nome: "Definida", integral: "∫ (50 + 20·sen(πx/7)) dx", primitiva: "50x − (140/π)·cos(πx/7) + C", f: (x) => 50 + 20 * Math.sin((Math.PI * x) / 7), F: (x) => 50 * x - (140 / Math.PI) * Math.cos((Math.PI * x) / 7), regra: "Integre a constante e o seno separadamente; o cosseno troca o sinal.", a: 0, b: 7 },
+};
+
+/** Regra de Simpson (n par), usada só para conferir o resultado exato. */
+export function simpson(f, a, b, n = 200) {
+  const h = (b - a) / n;
+  let s = f(a) + f(b);
+  for (let i = 1; i < n; i += 1) s += f(a + i * h) * (i % 2 ? 4 : 2);
+  return (s * h) / 3;
+}
+
+export function calcularIntegral(tipo, a, b) {
+  const I = INTEGRAIS[tipo];
+  if (a === b) return { ok: true, valor: 0, numerica: 0 };
+  return { ok: true, valor: I.F(b) - I.F(a), numerica: simpson(I.f, a, b) };
+}
+
+
+=== frontend\tests\cursor-orchestra.test.js ===
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { canPlayCursorOrchestra, planRoutes, bezier, arcControls, travelTime, easeInOutCubic } from "../js/cursor-path.js";
+
+test("desativa cursores com movimento reduzido", () => {
+  assert.equal(canPlayCursorOrchestra({ reducedMotion: true, finePointer: true }), false);
+});
+
+test("ativa cursores apenas com ponteiro fino", () => {
+  assert.equal(canPlayCursorOrchestra({ reducedMotion: false, finePointer: true }), true);
+  assert.equal(canPlayCursorOrchestra({ reducedMotion: false, finePointer: false }), false);
+});
+
+test("desativa cursores em telas pequenas mesmo com mouse conectado", () => {
+  assert.equal(canPlayCursorOrchestra({ reducedMotion: false, finePointer: true, compactViewport: true }), false);
+});
+
+test("distribui os blocos entre os cursores em rodízio", () => {
+  assert.deepEqual(planRoutes(5, 3), [[0, 3], [1, 4], [2]]);
+  assert.deepEqual(planRoutes(2, 3), [[0], [1]]);
+});
+
+test("a curva começa e termina nos pontos certos e é suave", () => {
+  const a = { x: 0, y: 0 }, b = { x: 300, y: 100 };
+  const [c1, c2] = arcControls(a, b);
+  assert.deepEqual(bezier(a, c1, c2, b, 0), a);
+  const fim = bezier(a, c1, c2, b, 1);
+  assert.ok(Math.abs(fim.x - 300) < 1e-9 && Math.abs(fim.y - 100) < 1e-9);
+  assert.equal(easeInOutCubic(0.5), 0.5);
+});
+
+test("viagens longas demoram mais, dentro de um limite", () => {
+  assert.equal(travelTime({ x: 0, y: 0 }, { x: 10, y: 0 }), 0.75);
+  assert.equal(travelTime({ x: 0, y: 0 }, { x: 5000, y: 0 }), 1.4);
+});
+
+
+=== frontend\tests\graph.test.js ===
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { sample, autoRange, niceStep } from "../js/graph.js";
+
+test("amostra a função afim nas pontas do intervalo", () => {
+  const pts = sample((x) => 40 + 3 * x, -10, 10, 4);
+  assert.equal(pts[0].y, 10);
+  assert.equal(pts.at(-1).y, 70);
+});
+
+test("ponto não finito vira buraco (quebra a curva)", () => {
+  const pts = sample((x) => 1 / x, -1, 1, 2);
+  assert.equal(pts[1], null);
+});
+
+test("o intervalo automático cabe a curva com folga", () => {
+  const r = autoRange((x) => x * x, -2, 2);
+  assert.ok(r.yMin < 0 && r.yMax > 4);
+});
+
+test("passos de grade são 1, 2 ou 5 vezes potência de 10", () => {
+  assert.equal(niceStep(100), 10);
+  assert.equal(niceStep(40), 5);
+  assert.equal(niceStep(7), 1);
+});
+
+
+=== frontend\tests\math.test.js ===
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  calculateFunction, tabelaFuncao, lerNumero, formatNumber,
+  LIMITES, calcularDerivada, DERIVADAS, calcularIntegral, INTEGRAIS, simpson,
+} from "../js/math.js";
+
+const perto = (a, b, tol = 1e-6) => assert.ok(Math.abs(a - b) < tol, `${a} ≉ ${b}`);
+
+test("calcula os cinco tipos de função", () => {
+  assert.equal(calculateFunction("constant", 12), 55);
+  assert.equal(calculateFunction("linear", 10), 70);
+  assert.equal(calculateFunction("quadratic", 50), 100);
+  assert.equal(calculateFunction("absolute", 40), 80);
+  perto(calculateFunction("exponential", 10), 69.8806, 1e-3);
+});
+
+test("monta a tabela de entradas e saídas em volta de x", () => {
+  assert.deepEqual(tabelaFuncao("linear", 10).map((p) => p.y), [64, 67, 70, 73, 76]);
+});
+
+test("valida números digitados", () => {
+  assert.deepEqual(lerNumero("2,5"), { ok: true, valor: 2.5 });
+  assert.equal(lerNumero("−3").valor, -3);
+  assert.equal(lerNumero("").ok, false);
+  assert.equal(lerNumero("abc").ok, false);
+  assert.equal(lerNumero("500", { max: 100 }).ok, false);
+});
+
+test("formata no padrão brasileiro com sinal de menos tipográfico", () => {
+  assert.equal(formatNumber(-1234.5), "−1.234,5");
+});
+
+test("limite removível vale 2a e a tabela se aproxima dele", () => {
+  const r = LIMITES.removivel.calcular(5);
+  assert.equal(r.valor, 10);
+  perto(r.direita.at(-1).y, 10, 1e-2);
+  perto(r.esquerda.at(-1).y, 10, 1e-2);
+});
+
+test("limite |x|/x em 0 não existe: laterais −1 e 1", () => {
+  const r = LIMITES.lateral.calcular();
+  assert.equal(r.existe, false);
+  assert.equal(r.esquerda[0].y, -1);
+  assert.equal(r.direita[0].y, 1);
+});
+
+test("limite no infinito vale 3", () => {
+  assert.equal(LIMITES.infinito.calcular().valor, 3);
+});
+
+test("as seis derivadas batem com a conferência numérica", () => {
+  for (const regra of Object.keys(DERIVADAS)) {
+    const r = calcularDerivada(regra, 1.5);
+    assert.ok(r.ok, regra);
+    perto(r.inclinacao, r.numerica, 1e-4);
+  }
+});
+
+test("quociente recusa x = −2 (divisão por zero)", () => {
+  assert.equal(calcularDerivada("quociente", -2).ok, false);
+});
+
+test("integrais: primitiva exata confere com Simpson", () => {
+  for (const tipo of Object.keys(INTEGRAIS)) {
+    const { a, b } = INTEGRAIS[tipo];
+    const r = calcularIntegral(tipo, a, b);
+    perto(r.valor, r.numerica, 1e-4);
+  }
+  perto(calcularIntegral("definida", 0, 7).valor, 350 + 280 / Math.PI, 1e-9);
+  perto(simpson((x) => x * x, 0, 3), 9, 1e-9);
+});
+
+
